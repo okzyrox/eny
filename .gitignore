@@ -1,0 +1,11 @@
+*.dll
+*.lib
+*.so
+*.dylib
+
+*.exe
+*.out
+
+# eny
+
+eny.json
