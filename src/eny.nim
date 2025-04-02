@@ -425,9 +425,9 @@ proc main() =
       let noteX = startX + (i * (SpriteUpscale + noteSpacing))
       
       if notePressedStates.hasKey(i) and notePressedStates[i]:
-        drawTexture(activeNoteDrawTable[i].texture, int32(noteX), int32(receptorY), White)
+        drawTexture(activeNoteDrawTable[i].texture, int32(noteX), int32(receptorY) - 20, White)
       else:
-        drawTexture(inactiveNoteDrawTable[i].texture, int32(noteX), int32(receptorY), White)
+        drawTexture(inactiveNoteDrawTable[i].texture, int32(noteX), int32(receptorY) - 20, White)
       
       let keyName = case i:
         of 0: "D"
