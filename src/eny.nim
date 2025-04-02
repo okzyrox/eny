@@ -50,10 +50,36 @@ var playerHitCount: Table[int, int] = {
   3: 0
 }.toTable
 
+var holdStartTimes: Table[int, float] = {
+  0: -1.0,
+  1: -1.0,
+  2: -1.0,
+  3: -1.0
+}.toTable
+
+var keyReleasedThisFrame: Table[int, bool] = {
+  0: false,
+  1: false,
+  2: false,
+  3: false
+}.toTable
+
+var prevNotePressedStates: Table[int, bool] = {
+  0: false,
+  1: false,
+  2: false,
+  3: false
+}.toTable
+
+var currentChart: Chart
+var currentSong: Music
+var config: JsonNode
+
 var isRecording = false
 var activeNoteDrawTable: Table[int, ref Note]
 var inactiveNoteDrawTable: Table[int, ref Note]
 var recentHits: seq[HitFeedback] = @[]
+var recordedNotes: seq[RecordedNote] = @[]
 
 proc loadEnyData(): JsonNode =
   if not fileExists("eny.json"):
@@ -74,8 +100,13 @@ proc loadEnyData(): JsonNode =
 
 proc updateKeyStates() =
   for key, index in KeyboardBinds:
+    prevNotePressedStates[index] = notePressedStates[index]
+    
     notePressedStates[index] = isKeyDown(key)
     keyPressedThisFrame[index] = isKeyPressed(key)
+    
+    # key release
+    keyReleasedThisFrame[index] = prevNotePressedStates[index] and not notePressedStates[index]
 
 proc drawRecordingUI(recordedNotes: seq[RecordedNote]) = 
   let recordingText = "RECORDING"
@@ -121,8 +152,24 @@ proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacin
   for i in 0..<inactiveNoteDrawTable.len:
     let noteX = startX + (i * (SpriteUpscale + noteSpacing))
     
-    if notePressedStates.hasKey(i) and notePressedStates[i]:
+    var isActiveHold = false
+    if not isRecording:
+      for note in currentChart.notes:
+        if note.columnIndex == i and note.isHoldNote and note.hit and not note.released:
+          isActiveHold = true
+          break
+    
+    if (notePressedStates.hasKey(i) and notePressedStates[i]) or isActiveHold:
       drawTexture(activeNoteDrawTable[i].texture, int32(noteX), int32(receptorY) - 20, White)
+      
+      if isActiveHold:
+        drawRectangle(
+          int32(noteX + int(SpriteUpscale/4)), 
+          int32(receptorY - 5),
+          int32(SpriteUpscale/2),
+          int32(10),
+          fade(colorFromHSV(float(i * 60), 0.7, 0.9), 0.8)
+        )
     else:
       drawTexture(inactiveNoteDrawTable[i].texture, int32(noteX), int32(receptorY) - 20, White)
     
@@ -156,6 +203,110 @@ proc drawHitRatings(startX: int, noteSpacing: int, receptorY: int) =
     let fadeColor = fade(color, hit.alpha)
     drawText(ratingText, int32(textX), textY, 20, fadeColor)
 
+proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY: int) =
+  for note in currentChart.notes:
+    if not note.hit or (note.isHoldNote and (not note.released)):
+      if note.position > -100:
+        let noteX = startX + (note.columnIndex * (SpriteUpscale + noteSpacing))
+        
+        if note.isHoldNote:
+          let holdEndPosition = note.position - (note.length * chartScrollSpeed)
+          
+          if not note.hit:
+            let holdHeight = note.position - holdEndPosition
+            
+            if holdHeight > 0:
+              drawRectangle(
+                int32(noteX + int(SpriteUpscale/4)), 
+                int32(holdEndPosition + SpriteUpscale/2),
+                int32(SpriteUpscale/2),
+                int32(holdHeight - SpriteUpscale/2),
+                fade(colorFromHSV(float(note.columnIndex * 60), 0.7, 0.9), 0.6)
+              )
+              
+              drawRectangle(
+                int32(noteX), 
+                int32(holdEndPosition),
+                int32(SpriteUpscale),
+                int32(SpriteUpscale/4),
+                fade(White, 0.8)
+              )
+          else:
+            let visibleHeight = float(receptorY) - holdEndPosition
+            
+            if visibleHeight > 0:
+              drawRectangle(
+                int32(noteX + int(SpriteUpscale/4)), 
+                int32(holdEndPosition + SpriteUpscale/2),
+                int32(SpriteUpscale/2),
+                int32(float(receptorY) - holdEndPosition - SpriteUpscale/2),
+                fade(colorFromHSV(float(note.columnIndex * 60), 0.7, 0.9), 0.6)
+              )
+              
+              drawRectangle(
+                int32(noteX), 
+                int32(holdEndPosition),
+                int32(SpriteUpscale),
+                int32(SpriteUpscale/4),
+                fade(White, 0.8)
+              )
+        # note head
+        if not note.hit:
+          drawTexture(inactiveNoteDrawTable[note.columnIndex].texture, int32(noteX), int32(note.position), White)
+
+
+proc updateRecording(songPosition: float) =
+  for key, index in KeyboardBinds:
+    if keyPressedThisFrame[index]:
+      holdStartTimes[index] = songPosition
+    
+    if keyReleasedThisFrame[index] and holdStartTimes[index] >= 0:
+      let holdDuration = songPosition - holdStartTimes[index]
+      
+      # If held for more than, say, 0.15s, it's a hold
+      if holdDuration >= 0.15:
+        recordedNotes.add(RecordedNote(
+          column: index, 
+          time: holdStartTimes[index], 
+          isHoldNote: true, 
+          length: holdDuration
+        ))
+      else:
+        # generic note
+        recordedNotes.add(RecordedNote(
+          column: index, 
+          time: holdStartTimes[index], 
+          isHoldNote: false, 
+          length: 0.0
+        ))
+      
+      holdStartTimes[index] = -1.0
+
+
+proc loadSong(filePath: string) =
+  if isRecording:
+    currentChart = new Chart
+    currentChart.songPath = filePath
+    currentChart.notes = @[]
+    
+    if not fileExists("assets/music/" & currentChart.songPath & ".mp3"):
+      echo "Song file not found for recording: ", currentChart.songPath
+      return
+      
+    currentSong = loadMusicStream("assets/music/" & currentChart.songPath & ".mp3")
+    setMusicVolume(currentSong, 0.5)
+  else:
+    var chartSongName = config["chartToLoad"].getStr() 
+    currentChart = loadChart("assets/chart/" & chartSongName & ".json")
+    if currentChart == nil:
+      echo "Failed to load chart"
+      return
+    if not fileExists("assets/music/" & currentChart.songPath & ".mp3"):
+      echo "Song file not found: ", currentChart.songPath
+      return
+    currentSong = loadMusicStream("assets/music/" & currentChart.songPath & ".mp3")
+    setMusicVolume(currentSong, 0.5)
+
 proc main() =
   initWindow(800, 600, "eny")
   setTargetFPS(60)
@@ -166,55 +317,29 @@ proc main() =
   activeNoteDrawTable = loadedNotes["Active"]
   inactiveNoteDrawTable = loadedNotes["Inactive"]
 
-  var chart: Chart
-  var song: Music
-
-  let config = loadEnyData()
+  config = loadEnyData()
   let isRecordingMode = config["recordingMode"].getBool()
   let recordingModeSong = config["recordingModeSong"].getStr()
   let songScrollSpeed = config["scrollSpeed"].getFloat()
+
+  isRecording = isRecordingMode
   
-  if isRecordingMode:
-    chart = new Chart
-    chart.songPath = recordingModeSong
-    chart.notes = @[]
-    
-    if not fileExists("assets/music/" & chart.songPath & ".mp3"):
-      echo "Song file not found for recording: ", chart.songPath
-      return
-      
-    song = loadMusicStream("assets/music/" & chart.songPath & ".mp3")
-    setMusicVolume(song, 0.5)
-  else:
-    var chartSongName = config["chartToLoad"].getStr() 
-    chart = loadChart("assets/chart/" & chartSongName & ".json")
-    if chart == nil:
-      echo "Failed to load chart"
-      return
-    if not fileExists("assets/music/" & chart.songPath & ".mp3"):
-      echo "Song file not found: ", chart.songPath
-      return
-    song = loadMusicStream("assets/music/" & chart.songPath & ".mp3")
-    setMusicVolume(song, 0.5)
+  loadSong(recordingModeSong)
+  currentChart.startTime = -3.0
   
-  chart.startTime = -3.0
-  
+  # draw configs (used for input too)
   let noteSpacing = 24
   let totalNotesWidth = (inactiveNoteDrawTable.len * SpriteUpscale) + ((inactiveNoteDrawTable.len - 1) * noteSpacing)
   let startX = (getScreenWidth() - totalNotesWidth) div 2
   let receptorY = getScreenHeight() - SpriteUpscale - 80
   let noteTextY = receptorY + 70
-
   let receptorLineY = receptorY + 30
   let receptorLineHeight = 4
-
+  
+  # update vars
   var gameTime = 0.0
   var songStarted = false
   var score = 0
-  
-  var recordedNotes: seq[RecordedNote] = @[]
-  isRecording = isRecordingMode
-
   let chartScrollSpeed = ScrollSpeed * songScrollSpeed
   
   # notes missed
@@ -226,48 +351,72 @@ proc main() =
     
     updateKeyStates()
 
-    let songPosition = gameTime + chart.startTime
+    let songPosition = gameTime + currentChart.startTime
 
     if songPosition >= 0 and not songStarted:
-      playMusicStream(song)
+      playMusicStream(currentSong)
       songStarted = true
     
     if songStarted:
-      updateMusicStream(song)
+      updateMusicStream(currentSong)
     
     # Recording mode
     if isRecording and songPosition >= 0:
-      for key, index in KeyboardBinds:
-        if keyPressedThisFrame[index]:
-          recordedNotes.add(RecordedNote(column: index, time: songPosition))
+      updateRecording(songPosition)
     
     if isRecording and isKeyPressed(KeyboardKey.G):
-      saveRecordedChart(recordedNotes, chart.songPath)
+      saveRecordedChart(recordedNotes, currentChart.songPath)
       isRecording = false
     
     if not isRecording:
       notesToCheck.setLen(0)
       
-      for note in chart.notes:
-        if note.hit:
+      for note in currentChart.notes:
+        if note.hit and (not note.isHoldNote or note.released):
           continue
           
         let timeToHit = note.time - songPosition
         note.position = float(receptorY) - (timeToHit * chartScrollSpeed)
         
-        if abs(timeToHit) < BadWindowMs / 1000.0:
+        if not note.hit and abs(timeToHit) < BadWindowMs / 1000.0:
           if keyPressedThisFrame[note.columnIndex]:
             note.hit = true
             playerHitCount[note.columnIndex] += 1
             
-            # hit rating
             let timeDiffMs = timeToHit * 1000.0
             let rating = getHitRating(timeDiffMs)
             let points = getScorePoints(rating)
             score += points
             
-            # Update score
-            case rating:
+            if not note.isHoldNote:
+              case rating:
+                of hrPerfect: playerScoreData["perfect"] += 1
+                of hrGreat: playerScoreData["great"] += 1
+                of hrGood: playerScoreData["good"] += 1
+                of hrOk: playerScoreData["ok"] += 1
+                of hrBad: playerScoreData["bad"] += 1
+                of hrMiss: playerScoreData["miss"] += 1
+              
+              recentHits.add(HitFeedback(
+                rating: rating,
+                column: note.columnIndex,
+                alpha: 1.0,
+                time: 0.0
+              ))
+        
+        elif note.isHoldNote and note.hit and not note.released:
+          let holdEndTime = note.time + note.length
+          let timeToHoldEnd = holdEndTime - songPosition
+          
+          if not notePressedStates[note.columnIndex]:
+            note.released = true
+            
+            let releaseTimeDiffMs = timeToHoldEnd * 1000.0
+            let releaseRating = getHitRating(releaseTimeDiffMs)
+            let releasePoints = getScorePoints(releaseRating) div 2 # hold releases get less points (because i hate them)
+            score += releasePoints
+            
+            case releaseRating:
               of hrPerfect: playerScoreData["perfect"] += 1
               of hrGreat: playerScoreData["great"] += 1
               of hrGood: playerScoreData["good"] += 1
@@ -276,15 +425,27 @@ proc main() =
               of hrMiss: playerScoreData["miss"] += 1
             
             recentHits.add(HitFeedback(
-              rating: rating,
+              rating: releaseRating,
+              column: note.columnIndex,
+              alpha: 1.0,
+              time: 0.0
+            ))
+          
+          elif timeToHoldEnd < -BadWindowMs / 1000.0:
+            note.released = true
+            playerScoreData["perfect"] += 1
+            score += getScorePoints(hrPerfect) div 2
+            
+            recentHits.add(HitFeedback(
+              rating: hrPerfect,
               column: note.columnIndex,
               alpha: 1.0,
               time: 0.0
             ))
         
-        # check for misses
         elif timeToHit < -BadWindowMs / 1000.0 and note.position > float(receptorY + SpriteUpscale):
-          notesToCheck.add(note)
+          if not note.hit:
+            notesToCheck.add(note)
       
       for i in countdown(recentHits.len - 1, 0):
         recentHits[i].time += deltaTime
@@ -298,13 +459,13 @@ proc main() =
           note.hit = true
           playerScoreData["miss"] += 1
       
-      chart.notes.keepItIf(not it.hit or it.position > -200)
+      currentChart.notes.keepItIf(not it.hit or it.position > -200)
     
     beginDrawing()
     clearBackground(Gray)
     drawFPS(10, 10)
     
-    let songTitle = chart.songPath
+    let songTitle = currentChart.songPath
     let titleWidth = measureText(songTitle, 24)
     drawText(songTitle, int32((getScreenWidth() - titleWidth) div 2), 20, 24, DarkBlue)
     
@@ -340,10 +501,7 @@ proc main() =
     
     # Fallin notes
     if not isRecording:
-      for note in chart.notes:
-        if not note.hit and note.position > -100:
-          let noteX = startX + (note.columnIndex * (SpriteUpscale + noteSpacing))
-          drawTexture(inactiveNoteDrawTable[note.columnIndex].texture, int32(noteX), int32(note.position), White)
+      drawNotes(startX, noteSpacing, chartScrollSpeed, receptorY)
     
     endDrawing()
 

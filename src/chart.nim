@@ -10,6 +10,10 @@ type
     time*: float
     position*: float
     hit*: bool
+    # hold note props
+    isHoldNote*: bool
+    length*: float
+    released*: bool
     
   Chart* = ref object of RootObj
     notes*: seq[ChartNote]
@@ -19,6 +23,8 @@ type
   RecordedNote* = object
     column*: int
     time*: float
+    isHoldNote*: bool
+    length*: float
 
 proc loadChart*(filePath: string): Chart =
   let jsonContent = readFile(filePath)
@@ -34,6 +40,15 @@ proc loadChart*(filePath: string): Chart =
     note.time = noteNode["time"].getFloat()
     note.position = 0
     note.hit = false
+    note.released = false
+    
+    if noteNode.hasKey("length"):
+      note.isHoldNote = true
+      note.length = noteNode["length"].getFloat()
+    else:
+      note.isHoldNote = false
+      note.length = 0.0
+      
     chart.notes.add(note)
   
   chart.notes.sort(proc (a, b: ChartNote): int = cmp(a.time, b.time))
@@ -50,6 +65,10 @@ proc saveRecordedChart*(notes: seq[RecordedNote], songName: string) =
     var noteObj = newJObject()
     noteObj["column"] = %note.column
     noteObj["time"] = %note.time
+
+    if note.isHoldNote:
+      noteObj["length"] = %note.length
+      
     notesArray.add(noteObj)
   
   jsonObj["notes"] = notesArray
