@@ -2,12 +2,13 @@
 ## 
 ## cc: okzyrox
 import raylib
-import std/[tables, strutils, strformat, json, sequtils, os]
+import std/[tables, strformat, sequtils, os]
 
 import ./[
   hit_rating,
   chart,
-  notes
+  notes,
+  config
 ]
 
 const
@@ -73,30 +74,13 @@ var prevNotePressedStates: Table[int, bool] = {
 
 var currentChart: Chart
 var currentSong: Music
-var config: JsonNode
+var currentConfig: EnyConfig
 
 var isRecording = false
 var activeNoteDrawTable: Table[int, ref Note]
 var inactiveNoteDrawTable: Table[int, ref Note]
 var recentHits: seq[HitFeedback] = @[]
 var recordedNotes: seq[RecordedNote] = @[]
-
-proc loadEnyData(): JsonNode =
-  if not fileExists("eny.json"):
-    echo "eny.json not found, creating default file"
-    let defaultData = newJObject()
-    defaultData["chartToLoad"] = %"recordedtest"
-    defaultData["recordingMode"] = %false
-    defaultData["recordingModeSong"] = %"testsong"
-    defaultData["scrollSpeed"] = %1.5
-
-    writeFile("eny.json", pretty(defaultData))
-    echo "Default eny.json created"
-    return defaultData
-  else:
-    let jsonContent = readFile("eny.json")
-    let jsonNode = parseJson(jsonContent)
-    return jsonNode
 
 proc updateKeyStates() =
   for key, index in KeyboardBinds:
@@ -296,7 +280,7 @@ proc loadSong(filePath: string) =
     currentSong = loadMusicStream("assets/music/" & currentChart.songPath & ".mp3")
     setMusicVolume(currentSong, 0.5)
   else:
-    var chartSongName = config["chartToLoad"].getStr() 
+    var chartSongName = currentConfig.chartToLoad
     currentChart = loadChart("assets/chart/" & chartSongName & ".json")
     if currentChart == nil:
       echo "Failed to load chart"
@@ -317,14 +301,10 @@ proc main() =
   activeNoteDrawTable = loadedNotes["Active"]
   inactiveNoteDrawTable = loadedNotes["Inactive"]
 
-  config = loadEnyData()
-  let isRecordingMode = config["recordingMode"].getBool()
-  let recordingModeSong = config["recordingModeSong"].getStr()
-  let songScrollSpeed = config["scrollSpeed"].getFloat()
-
-  isRecording = isRecordingMode
+  currentConfig = loadEnyConfig("eny.json")
+  isRecording = currentConfig.isRecordingMode
   
-  loadSong(recordingModeSong)
+  loadSong(currentConfig.chartToLoad)
   currentChart.startTime = -3.0
   
   # draw configs (used for input too)
@@ -340,7 +320,7 @@ proc main() =
   var gameTime = 0.0
   var songStarted = false
   var score = 0
-  let chartScrollSpeed = ScrollSpeed * songScrollSpeed
+  let chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
   
   # notes missed
   var notesToCheck: seq[ChartNote] = @[]
