@@ -27,6 +27,9 @@ type
     length*: float
 
 proc loadChart*(filePath: string): Chart =
+  if not fileExists(filePath):
+    echo "Chart file not found: ", filePath
+    return nil
   let jsonContent = readFile(filePath)
   let jsonNode = parseJson(jsonContent)
   

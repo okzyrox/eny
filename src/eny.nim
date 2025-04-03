@@ -275,7 +275,7 @@ proc loadSong(filePath: string) =
     
     if not fileExists("assets/music/" & currentChart.songPath & ".mp3"):
       echo "Song file not found for recording: ", currentChart.songPath
-      return
+      quit(1)
       
     currentSong = loadMusicStream("assets/music/" & currentChart.songPath & ".mp3")
     setMusicVolume(currentSong, 0.5)
@@ -283,29 +283,35 @@ proc loadSong(filePath: string) =
     var chartSongName = currentConfig.chartToLoad
     currentChart = loadChart("assets/chart/" & chartSongName & ".json")
     if currentChart == nil:
-      echo "Failed to load chart"
-      return
+      quit(1)
     if not fileExists("assets/music/" & currentChart.songPath & ".mp3"):
       echo "Song file not found: ", currentChart.songPath
-      return
+      quit(1)
     currentSong = loadMusicStream("assets/music/" & currentChart.songPath & ".mp3")
     setMusicVolume(currentSong, 0.5)
 
 proc main() =
+  # load raylib
+
   initWindow(800, 600, "eny")
   setTargetFPS(60)
   initAudioDevice()
   defer: closeAudioDevice()
 
+  # load config & chart
+  currentConfig = loadEnyConfig("eny.json")
+  isRecording = currentConfig.isRecordingMode
+  if isRecording:
+    loadSong(currentConfig.recordingModeSongName)
+  else:
+    loadSong(currentConfig.chartToLoad)
+  currentChart.startTime = -3.0
+
+  # load sprites
+
   var loadedNotes = loadNoteTextures("assets/image/notesheet.png")
   activeNoteDrawTable = loadedNotes["Active"]
   inactiveNoteDrawTable = loadedNotes["Inactive"]
-
-  currentConfig = loadEnyConfig("eny.json")
-  isRecording = currentConfig.isRecordingMode
-  
-  loadSong(currentConfig.chartToLoad)
-  currentChart.startTime = -3.0
   
   # draw configs (used for input too)
   let noteSpacing = 24
