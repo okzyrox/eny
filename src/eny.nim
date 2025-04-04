@@ -2,7 +2,7 @@
 ## 
 ## cc: okzyrox
 import raylib
-import std/[tables, strformat, sequtils, os]
+import std/[tables, strformat, sequtils, os, math]
 
 import ./[
   hit_rating,
@@ -251,15 +251,15 @@ proc updateRecording(songPosition: float) =
       if holdDuration >= 0.15:
         recordedNotes.add(RecordedNote(
           column: index, 
-          time: holdStartTimes[index], 
+          time: round(holdStartTimes[index], 3), 
           isHoldNote: true, 
-          length: holdDuration
+          length: round(holdDuration, 3)
         ))
       else:
         # generic note
         recordedNotes.add(RecordedNote(
           column: index, 
-          time: holdStartTimes[index], 
+          time: round(holdStartTimes[index], 3), 
           isHoldNote: false, 
           length: 0.0
         ))
