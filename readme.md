@@ -26,3 +26,11 @@ again in the `eny.json` file, there is a `chartToLoad` field which refers to the
 change it to play a different track
 
 ensure you have recording mode off too
+
+# how to rebind keys
+
+once again, edit `eny.json`
+
+the field named `keybinds` are your binds, they go from left to right based on the arrows in game.
+
+edit them however you wish, not all keybinds are supported though

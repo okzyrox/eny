@@ -26,6 +26,15 @@ type
     isHoldNote*: bool
     length*: float
 
+proc getChartSecondsLength*(chart: Chart): float =
+  if chart.notes.len == 0:
+    return 0.0
+  var maxTime = chart.notes[0].time
+  for note in chart.notes:
+    if note.time > maxTime:
+      maxTime = note.time
+  return maxTime
+
 proc loadChart*(filePath: string): Chart =
   if not fileExists(filePath):
     echo "Chart file not found: ", filePath

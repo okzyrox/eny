@@ -14,6 +14,8 @@ import ./[
 const
   # base song scroll speed (for 1x)
   ScrollSpeed = 450.0  # Pix/s, mult 0.5x-2.5x in chart data
+
+var
   KeyboardBinds: Table[KeyboardKey, int] = {
     KeyboardKey.D: 0,
     KeyboardKey.F: 1,
@@ -158,10 +160,10 @@ proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacin
       drawTexture(inactiveNoteDrawTable[i].texture, int32(noteX), int32(receptorY) - 20, White)
     
     let keyName = case i:
-      of 0: "D"
-      of 1: "F"
-      of 2: "J"
-      of 3: "K"
+      of 0: currentConfig.keybinds[0]
+      of 1: currentConfig.keybinds[1]
+      of 2: currentConfig.keybinds[2]
+      of 3: currentConfig.keybinds[3]
       else: ""
     
     let textWidth = measureText(keyName, 20)
@@ -247,8 +249,7 @@ proc updateRecording(songPosition: float) =
     if keyReleasedThisFrame[index] and holdStartTimes[index] >= 0:
       let holdDuration = songPosition - holdStartTimes[index]
       
-      # If held for more than, say, 0.15s, it's a hold
-      if holdDuration >= 0.15:
+      if holdDuration >= 0.25: # adjusted to reduce random hold notes when pressing a note for slightly too long
         recordedNotes.add(RecordedNote(
           column: index, 
           time: round(holdStartTimes[index], 3), 
@@ -298,6 +299,9 @@ proc main() =
   initAudioDevice()
   defer: closeAudioDevice()
 
+  let icon = loadImage("assets/eny/eny.png")
+  setWindowIcon(icon)
+
   # load config & chart
   currentConfig = loadEnyConfig("eny.json")
   isRecording = currentConfig.isRecordingMode
@@ -306,6 +310,8 @@ proc main() =
   else:
     loadSong(currentConfig.chartToLoad)
   currentChart.startTime = -3.0
+
+  let chartLength = getChartSecondsLength(currentChart) + (10.0) # 10 seconds wait after it ends
 
   # load sprites
 
@@ -325,9 +331,18 @@ proc main() =
   # update vars
   var gameTime = 0.0
   var songStarted = false
+  var songEnded = false
   var score = 0
   let chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
-  
+
+  # update keybinds
+  if currentConfig.keybinds.len > 0:
+    KeyboardBinds.clear()
+    for i in 0..<currentConfig.keybinds.len:
+      let keybind = currentConfig.keybinds[i]
+      KeyboardBinds[getKeyFromKeybind(keybind)] = i
+    for kbind in KeyboardBinds.pairs:
+      echo fmt"Key: {kbind[0]}, Index: {kbind[1]}"
   # notes missed
   var notesToCheck: seq[ChartNote] = @[]
 
@@ -345,6 +360,9 @@ proc main() =
     
     if songStarted:
       updateMusicStream(currentSong)
+      if songPosition >= chartLength:
+        break
+
     
     # Recording mode
     if isRecording and songPosition >= 0:
@@ -389,14 +407,26 @@ proc main() =
                 alpha: 1.0,
                 time: 0.0
               ))
-        
         elif note.isHoldNote and note.hit and not note.released:
           let holdEndTime = note.time + note.length
           let timeToHoldEnd = holdEndTime - songPosition
           
           if not notePressedStates[note.columnIndex]:
             note.released = true
-            
+        # elif note.isHoldNote and note.hit and not note.released:
+        #   let holdEndTime = note.time + note.length
+        #   let timeToHoldEnd = holdEndTime - songPosition
+          
+        #   var isClosestHold = true
+        #   for otherNote in currentChart.notes:
+        #     if otherNote != note and otherNote.columnIndex == note.columnIndex and
+        #       otherNote.isHoldNote and otherNote.hit and not otherNote.released and
+        #       abs(otherNote.time + otherNote.length - songPosition) < abs(timeToHoldEnd):
+        #       isClosestHold = false
+        #       break
+              
+        #   if not notePressedStates[note.columnIndex] and isClosestHold:
+        #     note.released = true            
             let releaseTimeDiffMs = timeToHoldEnd * 1000.0
             let releaseRating = getHitRating(releaseTimeDiffMs)
             let releasePoints = getScorePoints(releaseRating) div 2 # hold releases get less points (because i hate them)

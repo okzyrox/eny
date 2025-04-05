@@ -9,3 +9,11 @@
 # eny
 
 eny.json
+
+# Quaver
+
+*.qua
+
+# converter
+
+out/**
