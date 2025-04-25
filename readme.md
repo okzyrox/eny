@@ -1,4 +1,10 @@
-# eny
+<h1 align="center">
+  <br>
+  <a href="https://github.com/okzyrox/eny"><img src="assets/eny/eny.png" alt="Eny" width="150"></a>
+  <br>
+  <b>Eny</b>
+  <br>
+</h1>
 
 rhythm "game" in Nim and raylib
 
