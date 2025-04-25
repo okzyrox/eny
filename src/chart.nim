@@ -18,6 +18,7 @@ type
   Chart* = ref object of RootObj
     notes*: seq[ChartNote]
     songPath*: string
+    songTitle*: string
     startTime*: float
 
   RecordedNote* = object
@@ -44,6 +45,7 @@ proc loadChart*(filePath: string): Chart =
   
   var chart = new Chart
   chart.songPath = jsonNode["song"].getStr()
+  chart.songTitle = jsonNode["title"].getStr()
   chart.notes = @[]
   
   for noteNode in jsonNode["notes"]:
