@@ -40,3 +40,7 @@ once again, edit `eny.json`
 the field named `keybinds` are your binds, they go from left to right based on the arrows in game.
 
 edit them however you wish, not all keybinds are supported though
+
+# Licensing
+
+Notesheet art by DariDevTM
