@@ -18,6 +18,15 @@ i made this because i was inspired by a fairly small youtuber who made a rhythm 
 
 there are no stable builds of the game at the moment, however you can download the latest commit version from the actions tab
 
+<br>
+<img src=".github/guide/2.png">
+<br>
+find the file then download
+<br>
+<img src=".github/guide/3.png">
+<br>
+
+(the above image is not the name of the file, the file is just called `eny` )
 
 # How to...
 
