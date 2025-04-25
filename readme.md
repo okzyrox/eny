@@ -14,6 +14,11 @@ i've included some premade (although half-assed) charts and songs that i made by
 
 i made this because i was inspired by a fairly small youtuber who made a rhythm game based on Bocchi the Rock! (which was very cool and interesting), and i thought "i could totally do that... probably"
 
+# Download
+
+there are no stable builds of the game at the moment, however you can download the latest commit version from the actions tab
+
+
 # How to...
 
 ## how to make charts
