@@ -14,8 +14,9 @@ i've included some premade (although half-assed) charts and songs that i made by
 
 i made this because i was inspired by a fairly small youtuber who made a rhythm game based on Bocchi the Rock! (which was very cool and interesting), and i thought "i could totally do that... probably"
 
+# How to...
 
-# how to make charts
+## how to make charts
 
 when you start for the first time, a file named `eny.json` is created.
 
@@ -25,7 +26,7 @@ now when you start, your inputs are recorded for charting
 
 pressing `G` will save your song in "assets/chart/.."; if you want to play it i recommend renaming it for easier rememberance
 
-# how to load different charges
+## how to load different charges
 
 again in the `eny.json` file, there is a `chartToLoad` field which refers to the name of a chart in `assets/chart/`
 
@@ -33,7 +34,7 @@ change it to play a different track
 
 ensure you have recording mode off too
 
-# how to rebind keys
+## how to rebind keys
 
 once again, edit `eny.json`
 
