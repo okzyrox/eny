@@ -88,9 +88,9 @@ proc saveRecordedChart*(notes: seq[RecordedNote], songName: string) =
   jsonObj["notes"] = notesArray
   
   let timestamp = now().format("yyyy-MM-dd'T'HH-mm-ss")
-  let filePath = "assets/chart/recorded_" & timestamp & ".json"
+  let filePath = "content/chart/recorded_" & timestamp & ".json"
   
-  createDir("assets/chart")
+  createDir("content/chart")
   
   writeFile(filePath, pretty(jsonObj))
   echo "Chart saved to: ", filePath

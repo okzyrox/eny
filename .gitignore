@@ -6,6 +6,8 @@
 *.exe
 *.out
 
+bin/**
+
 # eny
 
 eny.json
@@ -16,4 +18,4 @@ eny.json
 
 # converter
 
-out/**
+QuaToEnyConverter/**

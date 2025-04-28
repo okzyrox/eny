@@ -279,21 +279,21 @@ proc loadSong(filePath: string) =
     currentChart.songPath = filePath
     currentChart.notes = @[]
     
-    if not fileExists("assets/music/" & currentChart.songPath & ".mp3"):
+    if not fileExists("content/music/" & currentChart.songPath & ".mp3"):
       echo "Song file not found for recording: ", currentChart.songPath
       quit(1)
       
-    currentSong = loadMusicStream("assets/music/" & currentChart.songPath & ".mp3")
+    currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
     setMusicVolume(currentSong, 0.5)
   else:
     var chartSongName = currentConfig.chartToLoad
-    currentChart = loadChart("assets/chart/" & chartSongName & ".json")
+    currentChart = loadChart("content/chart/" & chartSongName & ".json")
     if currentChart == nil:
       quit(1)
-    if not fileExists("assets/music/" & currentChart.songPath & ".mp3"):
+    if not fileExists("content/music/" & currentChart.songPath & ".mp3"):
       echo "Song file not found: ", currentChart.songPath
       quit(1)
-    currentSong = loadMusicStream("assets/music/" & currentChart.songPath & ".mp3")
+    currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
     setMusicVolume(currentSong, 0.5)
 
 proc main() =

@@ -134,12 +134,12 @@ proc convertQuaverToEny(filePath: string) =
   
   outputJson["notes"] = notesArray
   
-  let outputPath = "out/assets/chart/" & outputFilename
-  createDir("out/assets/chart")
+  let outputPath = "QuaToEnyConverter/content/chart/" & outputFilename
+  createDir("QuaToEnyConverter/content/chart")
   writeFile(outputPath, pretty(outputJson))
   
   echo fmt"Conversion complete! {notes.len} notes converted."
-  echo fmt"ensure that '{songName}.mp3' is in your assets/music directory"
+  echo fmt"ensure that '{songName}.mp3' is in your content/music directory"
 
 when isMainModule:
   if paramCount() < 1:
