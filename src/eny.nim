@@ -97,46 +97,55 @@ proc updateKeyStates() =
 proc drawRecordingUI(recordedNotes: seq[RecordedNote]) = 
   let recordingText = "RECORDING"
   let textWidth = measureText(recordingText, 20)
-  drawText(recordingText, int32(getScreenWidth() - textWidth - 10), 10, 20, Red)
-  drawText("Press G to save", int32(getScreenWidth() - measureText("Press G to save", 16) - 10), 35, 16, Red)
+  let screenWidth = int32(getScreenWidth())
+  drawText(recordingText, int32(screenWidth - textWidth - 10), 10, 20, Red)
+  drawText("Press G to save", int32(screenWidth - measureText("Press G to save", 16) - 10), 35, 16, Red)
   drawText(fmt"Total Notes: {recordedNotes.len}", 10, 70, 20, Black)
 
 proc drawPlayerStats(playerScore: int) =
   drawText(fmt"Score: {playerScore}", 10, 70, 20, DarkGreen)
-  let statY = 100
+  let statY = int32(100)
   let perfectText = "PERFECT: " & $playerScoreData["perfect"]
   let greatText = "GREAT: " & $playerScoreData["great"]
   let goodText = "GOOD: " & $playerScoreData["good"]
   let okText = "OK: " & $playerScoreData["ok"]
   let badText = "BAD: " & $playerScoreData["bad"]
   let missText = "MISS: " & $playerScoreData["miss"]
-  drawText(perfectText, 10, int32(statY), 16, getRatingColor(hrPerfect))
-  drawText(greatText, 10, int32(statY + 20), 16, getRatingColor(hrGreat))
-  drawText(goodText, 10, int32(statY + 40), 16, getRatingColor(hrGood))
-  drawText(okText, 10, int32(statY + 60), 16, getRatingColor(hrOk))
-  drawText(badText, 10, int32(statY + 80), 16, getRatingColor(hrBad))
-  drawText(missText, 10, int32(statY + 100), 16, getRatingColor(hrMiss))
+  drawText(perfectText, 10, statY, 16, getRatingColor(hrPerfect))
+  drawText(greatText, 10, statY + 20, 16, getRatingColor(hrGreat))
+  drawText(goodText, 10, statY + 40, 16, getRatingColor(hrGood))
+  drawText(okText, 10, statY + 60, 16, getRatingColor(hrOk))
+  drawText(badText, 10, statY + 80, 16, getRatingColor(hrBad))
+  drawText(missText, 10, statY + 100, 16, getRatingColor(hrMiss))
 
 proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacing: int, receptorLineY: int, receptorLineHeight: int, noteTextY: int) =
+  let receptorLineY32 = int32(receptorLineY)
+  let receptorY32 = int32(receptorY)
+  let receptorLineHeight32 = int32(receptorLineHeight)
+  let startX32 = int32(startX)
+  let totalNotesWidth32 = int32(totalNotesWidth)
+
+  let halfScale = int32(SpriteUpscale / 2)
+  let quarterScale = int32(SpriteUpscale / 4)
   drawRectangle(
-    int32(startX - 10), 
-    int32(receptorLineY), 
-    int32(totalNotesWidth + 20), 
-    int32(receptorLineHeight), 
+    startX32 - 10, 
+    receptorLineY32, 
+    totalNotesWidth32 + 20, 
+    receptorLineHeight32, 
     fade(DarkBlue, 0.6)
   )
   drawRectangle(
-    int32(startX - 10), 
-    int32(receptorY), 
-    int32(totalNotesWidth + 20), 
-    int32(receptorLineHeight), 
+    startX32 - 10, 
+    receptorY32, 
+    totalNotesWidth32 + 20, 
+    receptorLineHeight32, 
     fade(Blue, 0.6)
   )
     
     
   # Draw receptors
   for i in 0..<inactiveNoteDrawTable.len:
-    let noteX = startX + (i * (SpriteUpscale + noteSpacing))
+    let noteX = startX32 + int32(i * (SpriteUpscale + noteSpacing))
     
     var isActiveHold = false
     if not isRecording:
@@ -146,18 +155,18 @@ proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacin
           break
     
     if (notePressedStates.hasKey(i) and notePressedStates[i]) or isActiveHold:
-      drawTexture(activeNoteDrawTable[i].texture, int32(noteX), int32(receptorY) - 20, White)
+      drawTexture(activeNoteDrawTable[i].texture, noteX, receptorY32 - 20, White)
       
       if isActiveHold:
         drawRectangle(
-          int32(noteX + int(SpriteUpscale/4)), 
-          int32(receptorY - 5),
-          int32(SpriteUpscale/2),
+          noteX + quarterScale, 
+          receptorY32 - 5,
+          halfScale,
           int32(10),
           fade(colorFromHSV(float(i * 60), 0.7, 0.9), 0.8)
         )
     else:
-      drawTexture(inactiveNoteDrawTable[i].texture, int32(noteX), int32(receptorY) - 20, White)
+      drawTexture(inactiveNoteDrawTable[i].texture, noteX, receptorY32 - 20, White)
     
     let keyName = case i:
       of 0: currentConfig.keybinds[0]
@@ -167,8 +176,8 @@ proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacin
       else: ""
     
     let textWidth = measureText(keyName, 20)
-    let textX = noteX + (SpriteUpscale - textWidth) div 2
-    drawText(keyName, int32(textX), int32(noteTextY), 20, White)
+    let textX = int32(noteX + (SpriteUpscale - textWidth) div 2)
+    drawText(keyName, textX, int32(noteTextY), 20, White)
 
 proc drawHitRatings(startX: int, noteSpacing: int, receptorY: int) = 
   for hit in recentHits:
@@ -193,28 +202,30 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
   for note in currentChart.notes:
     if not note.hit or (note.isHoldNote and (not note.released)):
       if note.position > -100:
-        let noteX = startX + (note.columnIndex * (SpriteUpscale + noteSpacing))
+        let noteX = int32(startX + (note.columnIndex * (SpriteUpscale + noteSpacing)))
+        let halfScale = int32(SpriteUpscale / 2)
+        let quarterScale = int32(SpriteUpscale / 4)
         
         if note.isHoldNote:
-          let holdEndPosition = note.position - (note.length * chartScrollSpeed)
-          
+          let holdEndPosition = int32(note.position - (note.length * chartScrollSpeed))
+          let noteColour = colorFromHSV(float(note.columnIndex * 60))
           if not note.hit:
-            let holdHeight = note.position - holdEndPosition
+            let holdHeight = int32(note.position - holdEndPosition)
             
             if holdHeight > 0:
               drawRectangle(
-                int32(noteX + int(SpriteUpscale/4)), 
-                int32(holdEndPosition + SpriteUpscale/2),
-                int32(SpriteUpscale/2),
-                int32(holdHeight - SpriteUpscale/2),
-                fade(colorFromHSV(float(note.columnIndex * 60), 0.7, 0.9), 0.6)
+                noteX + quarterScale, 
+                holdEndPosition + halfScale,
+                halfScale,
+                holdHeight - halfScale,
+                fade(noteColour, 0.7, 0.9), 0.6)
               )
               
               drawRectangle(
-                int32(noteX), 
-                int32(holdEndPosition),
+                noteX, 
+                holdEndPosition,
                 int32(SpriteUpscale),
-                int32(SpriteUpscale/4),
+                quarterScale,
                 fade(White, 0.8)
               )
           else:
@@ -222,23 +233,23 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
             
             if visibleHeight > 0:
               drawRectangle(
-                int32(noteX + int(SpriteUpscale/4)), 
-                int32(holdEndPosition + SpriteUpscale/2),
-                int32(SpriteUpscale/2),
-                int32(float(receptorY) - holdEndPosition - SpriteUpscale/2),
-                fade(colorFromHSV(float(note.columnIndex * 60), 0.7, 0.9), 0.6)
+                noteX + quarterScale, 
+                holdEndPosition + halfScale,
+                halfScale,
+                int32(float(receptorY) - holdEndPosition - halfScale),
+                fade(noteColour, 0.7, 0.9), 0.6)
               )
               
               drawRectangle(
-                int32(noteX), 
-                int32(holdEndPosition),
+                noteX, 
+                holdEndPosition,
                 int32(SpriteUpscale),
-                int32(SpriteUpscale/4),
+                quarterScale,
                 fade(White, 0.8)
               )
         # note head
         if not note.hit:
-          drawTexture(inactiveNoteDrawTable[note.columnIndex].texture, int32(noteX), int32(note.position), White)
+          drawTexture(inactiveNoteDrawTable[note.columnIndex].texture, noteX, int32(note.position), White)
 
 
 proc updateRecording(songPosition: float) =
@@ -248,11 +259,12 @@ proc updateRecording(songPosition: float) =
     
     if keyReleasedThisFrame[index] and holdStartTimes[index] >= 0:
       let holdDuration = songPosition - holdStartTimes[index]
+      let noteTimePosition = round(holdStartTimes[index], 3)
       
       if holdDuration >= 0.25: # adjusted to reduce random hold notes when pressing a note for slightly too long
         recordedNotes.add(RecordedNote(
           column: index, 
-          time: round(holdStartTimes[index], 3), 
+          time: noteTimePosition, 
           isHoldNote: true, 
           length: round(holdDuration, 3)
         ))
@@ -260,7 +272,7 @@ proc updateRecording(songPosition: float) =
         # generic note
         recordedNotes.add(RecordedNote(
           column: index, 
-          time: round(holdStartTimes[index], 3), 
+          time: noteTimePosition, 
           isHoldNote: false, 
           length: 0.0
         ))
