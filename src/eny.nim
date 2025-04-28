@@ -81,8 +81,11 @@ var currentConfig: EnyConfig
 var isRecording = false
 var activeNoteDrawTable: Table[int, ref Note]
 var inactiveNoteDrawTable: Table[int, ref Note]
-var recentHits: seq[HitFeedback] = @[]
+var recentHits: seq[HitFeedback] = newSeqOfCap[HitFeedback](128)
 var recordedNotes: seq[RecordedNote] = @[]
+
+var screenHeight: int32
+var screenWidth: int32
 
 proc updateKeyStates() =
   for key, index in KeyboardBinds:
@@ -97,7 +100,6 @@ proc updateKeyStates() =
 proc drawRecordingUI(recordedNotes: seq[RecordedNote]) = 
   let recordingText = "RECORDING"
   let textWidth = measureText(recordingText, 20)
-  let screenWidth = int32(getScreenWidth())
   drawText(recordingText, int32(screenWidth - textWidth - 10), 10, 20, Red)
   drawText("Press G to save", int32(screenWidth - measureText("Press G to save", 16) - 10), 35, 16, Red)
   drawText(fmt"Total Notes: {recordedNotes.len}", 10, 70, 20, Black)
@@ -177,7 +179,8 @@ proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacin
     
     let textWidth = measureText(keyName, 20)
     let textX = int32(noteX + (SpriteUpscale - textWidth) div 2)
-    drawText(keyName, textX, int32(noteTextY), 20, White)
+    let noteTextY32 = int32(noteTextY)
+    drawText(keyName, textX, noteTextY32, 20, White)
 
 proc drawHitRatings(startX: int, noteSpacing: int, receptorY: int) = 
   for hit in recentHits:
@@ -201,7 +204,8 @@ proc drawHitRatings(startX: int, noteSpacing: int, receptorY: int) =
 proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY: int) =
   for note in currentChart.notes:
     if not note.hit or (note.isHoldNote and (not note.released)):
-      if note.position > -100:
+      if note.position > -100 and (note.isHoldNote or note.position < float(screenHeight + 100)): # only draw notes that are on screen
+        # special case to handle hold note trails (so they dont end abruptly due to cutoff)
         let noteX = int32(startX + (note.columnIndex * (SpriteUpscale + noteSpacing)))
         let halfScale = int32(SpriteUpscale / 2)
         let quarterScale = int32(SpriteUpscale / 4)
@@ -216,9 +220,9 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
             if holdHeight > 0:
               drawRectangle(noteX + quarterScale, holdEndPosition + halfScale, halfScale, holdHeight - halfScale, fade(noteColour, 0.6))
               
-              drawRectangle(noteX, holdEndPosition, int32(SpriteUpscale), quarterScale, fade(White, 0.8))
+              drawRectangle(noteX, holdEndPosition, SpriteUpscale, quarterScale, fade(White, 0.8))
           else:
-            let visibleHeight = float(receptorY) - holdEndPosition
+            let visibleHeight = int32(receptorY) - holdEndPosition
             
             if visibleHeight > 0:
               drawRectangle(
@@ -232,7 +236,7 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
               drawRectangle(
                 noteX, 
                 holdEndPosition,
-                int32(SpriteUpscale),
+                SpriteUpscale,
                 quarterScale,
                 fade(White, 0.8)
               )
@@ -296,7 +300,7 @@ proc main() =
   # load raylib
 
   initWindow(800, 600, "eny")
-  setTargetFPS(60)
+  setTargetFPS(144)
   initAudioDevice()
   defer: closeAudioDevice()
 
@@ -321,10 +325,13 @@ proc main() =
   inactiveNoteDrawTable = loadedNotes["Inactive"]
   
   # draw configs (used for input too)
+  screenHeight = getScreenHeight()
+  screenWidth = getScreenWidth()
+
   let noteSpacing = 24
   let totalNotesWidth = (inactiveNoteDrawTable.len * SpriteUpscale) + ((inactiveNoteDrawTable.len - 1) * noteSpacing)
-  let startX = (getScreenWidth() - totalNotesWidth) div 2
-  let receptorY = getScreenHeight() - SpriteUpscale - 80
+  let startX = (screenWidth - totalNotesWidth) div 2
+  let receptorY = screenHeight - SpriteUpscale - 80
   let noteTextY = receptorY + 70
   let receptorLineY = receptorY + 30
   let receptorLineHeight = 4
@@ -362,7 +369,11 @@ proc main() =
     if songStarted:
       updateMusicStream(currentSong)
       if songPosition >= chartLength:
-        break
+        stopMusicStream(currentSong)
+        songEnded = true
+    
+    if songEnded:
+      break
 
     
     # Recording mode
@@ -557,7 +568,8 @@ proc main() =
     
     let songTitle = currentChart.songTitle
     let titleWidth = measureText(songTitle, 24)
-    drawText(songTitle, int32((getScreenWidth() - titleWidth) div 2), 20, 24, DarkBlue)
+    let titleX = int32((screenWidth - titleWidth) div 2)
+    drawText(songTitle, titleX, 20, 24, DarkBlue)
     
     # Record UI
     if isRecording:
@@ -567,7 +579,8 @@ proc main() =
     if songPosition < 0:
       let countdownText = $(-int(songPosition) + 1)
       let textWidth = measureText(countdownText, 40)
-      drawText(countdownText, int32((getScreenWidth() - textWidth) div 2), 100, 40, Red)
+      let countdownX = int32((screenWidth - textWidth) div 2)
+      drawText(countdownText, countdownX, 100, 40, Red)
     else:
       # stats
       drawText(fmt"Time: {songPosition:.2f}s", 10, 40, 20, Black)
