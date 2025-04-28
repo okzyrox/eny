@@ -32,7 +32,7 @@ jobs:
         with:
           name: eny
           path: |
-            bin/eny.exe
+            eny.exe
             assets/   
             content/
   # build-linux:

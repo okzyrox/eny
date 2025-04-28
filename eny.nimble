@@ -6,8 +6,6 @@ description   = "A new awesome nimble package"
 license       = "Proprietary"
 srcDir        = "src"
 bin           = @["eny"]
-binDir       = "bin"
-
 
 # Dependencies
 
