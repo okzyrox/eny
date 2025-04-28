@@ -209,6 +209,7 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
         if note.isHoldNote:
           let holdEndPosition = int32(note.position - (note.length * chartScrollSpeed))
           let noteColour = colorFromHSV(float(note.columnIndex * 60), 0.7, 0.9)
+          let receptorY32 = int32(receptorY)
           if not note.hit:
             let holdHeight = int32(note.position) - holdEndPosition
             
@@ -224,7 +225,7 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
                 noteX + quarterScale, 
                 holdEndPosition + halfScale,
                 halfScale,
-                int32(float(receptorY) - holdEndPosition - halfScale),
+                receptorY32 - holdEndPosition - halfScale,
                 fade(noteColour, 0.6)
               )
               
