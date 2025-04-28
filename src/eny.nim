@@ -225,7 +225,7 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
                 holdEndPosition + halfScale,
                 halfScale,
                 int32(float(receptorY) - holdEndPosition - halfScale),
-                fade(noteColour, 0.7, 0.9), 0.6)
+                fade(noteColour, 0.6)
               )
               
               drawRectangle(
