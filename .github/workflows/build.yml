@@ -34,6 +34,7 @@ jobs:
           path: |
             eny.exe
             assets/   
+            content/
   # build-linux:
   #   runs-on: ubuntu-latest
   #   steps:
