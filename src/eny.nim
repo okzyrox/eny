@@ -208,26 +208,14 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
         
         if note.isHoldNote:
           let holdEndPosition = int32(note.position - (note.length * chartScrollSpeed))
-          let noteColour = colorFromHSV(float(note.columnIndex * 60))
+          let noteColour = colorFromHSV(float(note.columnIndex * 60), 0.7, 0.9)
           if not note.hit:
-            let holdHeight = int32(note.position - holdEndPosition)
+            let holdHeight = int32(note.position) - holdEndPosition
             
             if holdHeight > 0:
-              drawRectangle(
-                noteX + quarterScale, 
-                holdEndPosition + halfScale,
-                halfScale,
-                holdHeight - halfScale,
-                fade(noteColour, 0.7, 0.9), 0.6)
-              )
+              drawRectangle(noteX + quarterScale, holdEndPosition + halfScale, halfScale, holdHeight - halfScale, fade(noteColour, 0.6))
               
-              drawRectangle(
-                noteX, 
-                holdEndPosition,
-                int32(SpriteUpscale),
-                quarterScale,
-                fade(White, 0.8)
-              )
+              drawRectangle(noteX, holdEndPosition, int32(SpriteUpscale), quarterScale, fade(White, 0.8))
           else:
             let visibleHeight = float(receptorY) - holdEndPosition
             
