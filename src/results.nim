@@ -1,7 +1,7 @@
 import raylib
 import states
 
-import std/[math, strutils, strformat]
+import std/[math, strformat]
 
 type
   GameResults* = object

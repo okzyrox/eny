@@ -1,4 +1,4 @@
-import json, os, strutils
+import json, os
 import raylib
 
 type

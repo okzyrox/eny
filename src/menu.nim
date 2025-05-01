@@ -1,5 +1,5 @@
 import raylib
-import std/[math]
+import std/[math, browsers]
 import menuchart, states, chart
 
 const
@@ -19,6 +19,7 @@ type
     selectedChart*: int
     scrollOffset*: float
     recordButtonHovered: bool
+    authorCreditsHovered: bool
 
 var menuState*: MenuState
 var minScroll*: float
@@ -60,8 +61,16 @@ proc updateMenu*() =
     width: RecordButtonWidth.float, 
     height: RecordButtonHeight.float
   )
+
+  let authorCreditsRect = Rectangle(
+    x: 20, 
+    y: (getScreenHeight() - 40).float, 
+    width: measureText("by okzyrox", 20).float,
+    height: 20
+  )
   
   menuState.recordButtonHovered = checkCollisionPointRec(mousePos, recordBtnRect)
+  menuState.authorCreditsHovered = checkCollisionPointRec(mousePos, authorCreditsRect)
   
   if menuState.recordButtonHovered and isMouseButtonReleased(MouseButton.Left):
     isRecording = true
@@ -69,6 +78,9 @@ proc updateMenu*() =
     loadSong(currentConfig.recordingModeSongName)
     currentState = GameState.Playing
     return
+  
+  if menuState.authorCreditsHovered and isMouseButtonReleased(MouseButton.Left):
+    block: openDefaultBrowser("https://www.github.com/okzyrox")
 
   logoScalePulseTime += getFrameTime() * LogoPulseSpeed
   logoAlphaPulseTime += getFrameTime() * (LogoPulseSpeed * 0.7)
@@ -236,5 +248,13 @@ proc drawMenu*() =
     
     if menuState.scrollOffset < 0:
       drawText("UP", getScreenWidth() div 2 - 10, (contentTop - 30).int32, 30, colorAlpha(White, 0.6))
+  
+  if menuState.authorCreditsHovered:
+    drawText("by okzyrox!!!", 20, getScreenHeight() - 40, 20, Purple)
+  else:
+    drawText("by okzyrox!", 20, getScreenHeight() - 40, 20, LightGray)
+  
+  drawText("v0.0.1", getScreenWidth() - 100, getScreenHeight() - 40, 20, LightGray)
+  drawText("Press ESC to exit", 20, 20, 20, LightGray)
 
   endDrawing()

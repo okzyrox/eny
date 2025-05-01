@@ -1,6 +1,6 @@
 import chart, config
 import raylib 
-import std/[os, json, strutils]
+import std/[os]
 type
   GameState* = enum
     MainMenu, Playing, Results, Recording

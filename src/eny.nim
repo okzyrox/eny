@@ -2,7 +2,7 @@
 ## 
 ## cc: okzyrox
 import raylib
-import std/[tables, strformat, sequtils, os, math]
+import std/[tables, strformat, sequtils, math]
 
 import ./[
   hit_rating,
@@ -10,7 +10,6 @@ import ./[
   notes,
   config,
 
-  menuchart,
   menu,
   states,
   results
