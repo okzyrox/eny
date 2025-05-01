@@ -120,6 +120,16 @@ proc convertQuaverToEny(filePath: string) =
   var outputJson = newJObject()
   outputJson["title"] = %("(Quaver): " & title)
   outputJson["song"] = %songName
+  outputJson["extra"] = %*{}
+  outputJson["extra"]["fromQuaver"] = %true
+  if metadata.hasKey("Artist"):
+    outputJson["extra"]["artist"] = %metadata["Artist"]
+  if metadata.hasKey("Creator"):
+    outputJson["extra"]["creator"] = %metadata["Creator"]
+  if metadata.hasKey("DifficultyName"):
+    outputJson["extra"]["difficulty"] = %metadata["DifficultyName"]
+  if metadata.hasKey("Source"):
+    outputJson["extra"]["source"] = %metadata["Source"]
   
   var notesArray = newJArray()
   for note in notes:

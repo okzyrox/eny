@@ -8,7 +8,12 @@ import ./[
   hit_rating,
   chart,
   notes,
-  config
+  config,
+
+  menuchart,
+  menu,
+  states,
+  results
 ]
 
 const
@@ -74,11 +79,6 @@ var prevNotePressedStates: Table[int, bool] = {
   3: false
 }.toTable
 
-var currentChart: Chart
-var currentSong: Music
-var currentConfig: EnyConfig
-
-var isRecording = false
 var activeNoteDrawTable: Table[int, ref Note]
 var inactiveNoteDrawTable: Table[int, ref Note]
 var recentHits: seq[HitFeedback] = newSeqOfCap[HitFeedback](128)
@@ -86,6 +86,20 @@ var recordedNotes: seq[RecordedNote] = @[]
 
 var screenHeight: int32
 var screenWidth: int32
+
+var currentResults: GameResults = GameResults(
+  score: 0,
+  maxCombo: 0,
+  accuracy: 0.0,
+  perfect: 0,
+  good: 0,
+  miss: 0
+)
+
+var chartLength: float = 0.0
+
+var songPosition: float = 0.0
+var score: int = 0
 
 proc updateKeyStates() =
   for key, index in KeyboardBinds:
@@ -244,6 +258,50 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
         if not note.hit:
           drawTexture(inactiveNoteDrawTable[note.columnIndex].texture, noteX, int32(note.position), White)
 
+proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing: int, receptorLineY: int, receptorLineHeight: int, noteTextY: int, chartScrollSpeed: float) =
+  clearBackground(Gray)
+  drawFPS(10, 10)
+  
+  let songTitle = currentChart.songTitle
+  let titleWidth = measureText(songTitle, 24)
+  let titleX = int32((screenWidth - titleWidth) div 2)
+  drawText(songTitle, titleX, 20, 24, DarkBlue)
+  
+  # Record UI
+  if isRecording:
+    drawRecordingUI(recordedNotes)
+  
+  # Countdown
+  if songPosition < 0:
+    let countdownText = $(-int(songPosition) + 1)
+    let textWidth = measureText(countdownText, 40)
+    let countdownX = int32((screenWidth - textWidth) div 2)
+    drawText(countdownText, countdownX, 100, 40, Red)
+  else:
+    # stats
+    drawText(fmt"Time: {songPosition:.2f}s", 10, 40, 20, Black)
+    
+    # Score breakdown
+    if not isRecording:
+      drawPlayerStats(score)
+  
+  drawReceptors(
+    startX, 
+    receptorY, 
+    totalNotesWidth, 
+    noteSpacing, 
+    receptorLineY, 
+    receptorLineHeight, 
+    noteTextY
+  )
+  
+  # hit rating
+  drawHitRatings(startX, noteSpacing, receptorY)
+  
+  # Fallin notes
+  if not isRecording:
+    drawNotes(startX, noteSpacing, chartScrollSpeed, receptorY)
+  
 
 proc updateRecording(songPosition: float) =
   for key, index in KeyboardBinds:
@@ -272,36 +330,13 @@ proc updateRecording(songPosition: float) =
       
       holdStartTimes[index] = -1.0
 
-
-proc loadSong(filePath: string) =
-  if isRecording:
-    currentChart = new Chart
-    currentChart.songPath = filePath
-    currentChart.notes = @[]
-    
-    if not fileExists("content/music/" & currentChart.songPath & ".mp3"):
-      echo "Song file not found for recording: ", currentChart.songPath
-      quit(1)
-      
-    currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
-    setMusicVolume(currentSong, 0.5)
-  else:
-    var chartSongName = currentConfig.chartToLoad
-    currentChart = loadChart("content/chart/" & chartSongName & ".json")
-    if currentChart == nil:
-      quit(1)
-    if not fileExists("content/music/" & currentChart.songPath & ".mp3"):
-      echo "Song file not found: ", currentChart.songPath
-      quit(1)
-    currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
-    setMusicVolume(currentSong, 0.5)
-
 proc main() =
   # load raylib
 
   initWindow(800, 600, "eny")
   setTargetFPS(144)
   initAudioDevice()
+  setConfigFlags(flags(VsyncHint))
   defer: closeAudioDevice()
 
   let icon = loadImage("assets/eny/eny.png")
@@ -312,11 +347,6 @@ proc main() =
   isRecording = currentConfig.isRecordingMode
   if isRecording:
     loadSong(currentConfig.recordingModeSongName)
-  else:
-    loadSong(currentConfig.chartToLoad)
-  currentChart.startTime = -3.0
-
-  let chartLength = getChartSecondsLength(currentChart) + (10.0) # 10 seconds wait after it ends
 
   # load sprites
 
@@ -340,7 +370,7 @@ proc main() =
   var gameTime = 0.0
   var songStarted = false
   var songEnded = false
-  var score = 0
+  # var score = 0
   let chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
 
   # update keybinds
@@ -354,260 +384,259 @@ proc main() =
   # notes missed
   var notesToCheck: seq[ChartNote] = @[]
 
+  initMenu()
+
   while not windowShouldClose():
-    let deltaTime = getFrameTime()
-    gameTime += deltaTime
-    
     updateKeyStates()
-
-    let songPosition = gameTime + currentChart.startTime
-
-    if songPosition >= 0 and not songStarted:
-      playMusicStream(currentSong)
-      songStarted = true
-    
-    if songStarted:
-      updateMusicStream(currentSong)
-      if songPosition >= chartLength:
-        stopMusicStream(currentSong)
-        songEnded = true
-    
-    if songEnded:
-      break
-
-    
-    # Recording mode
-    if isRecording and songPosition >= 0:
-      updateRecording(songPosition)
-    
-    if isRecording and isKeyPressed(KeyboardKey.G):
-      saveRecordedChart(recordedNotes, currentChart.songPath)
-      isRecording = false
-    
-    if not isRecording:
-      notesToCheck.setLen(0)
-      
-      for note in currentChart.notes:
-        if note.hit and (not note.isHoldNote or note.released):
-          continue
-          
-        let timeToHit = note.time - songPosition
-        note.position = float(receptorY) - (timeToHit * chartScrollSpeed)
+    case currentState:
+      of GameState.Playing:
+        let deltaTime = getFrameTime()
+        gameTime += deltaTime
         
-        if not note.hit and abs(timeToHit) < BadWindowMs / 1000.0:
-          if keyPressedThisFrame[note.columnIndex]:
-            note.hit = true
-            playerHitCount[note.columnIndex] += 1
+        # echo fmt"Game Time: {gameTime:.2f}"
+        if currentChart == nil:
+          echo "Chart is nil!"
+          break
+
+        if chartLength == 0.0 and not isRecording:
+          chartLength = getChartSecondsLength(currentChart)
+          if chartLength == 0.0:
+            echo "Chart length is 0!"
+            break
+        songPosition = gameTime + currentChart.startTime
+
+        if songPosition >= 0 and not songStarted:
+          playMusicStream(currentSong)
+          songStarted = true
+        
+        if songStarted:
+          updateMusicStream(currentSong)
+          if songPosition >= chartLength and not isRecording:
+            stopMusicStream(currentSong)
+            currentResults.score = score
+            currentResults.perfect = playerScoreData["perfect"]
+            currentResults.great = playerScoreData["great"]
+            currentResults.good = playerScoreData["good"]
+            currentResults.ok = playerScoreData["ok"]
+            currentResults.bad = playerScoreData["bad"]
+            currentResults.miss = playerScoreData["miss"]
+            songStarted = false
+            currentState = GameState.Results
             
-            let timeDiffMs = timeToHit * 1000.0
-            let rating = getHitRating(timeDiffMs)
-            let points = getScorePoints(rating)
-            score += points
-            
-            if not note.isHoldNote:
-              case rating:
-                of hrPerfect: playerScoreData["perfect"] += 1
-                of hrGreat: playerScoreData["great"] += 1
-                of hrGood: playerScoreData["good"] += 1
-                of hrOk: playerScoreData["ok"] += 1
-                of hrBad: playerScoreData["bad"] += 1
-                of hrMiss: playerScoreData["miss"] += 1
+        if songEnded:
+          break
+
+        # Recording mode
+        #  and songPosition >= 0
+        if isRecording:
+          updateRecording(songPosition)
+        
+        if isRecording and isKeyPressed(KeyboardKey.G):
+          saveRecordedChart(recordedNotes, currentChart.songPath)
+          isRecording = false
+          songStarted = false
+          stopMusicStream(currentSong)
+          initMenu() # reset menu state to reload songs list
+          currentState = GameState.MainMenu
+        
+        if not isRecording:
+          notesToCheck.setLen(0)
+          
+          for note in currentChart.notes:
+            if note.hit and (not note.isHoldNote or note.released):
+              continue
               
-              recentHits.add(HitFeedback(
-                rating: rating,
-                column: note.columnIndex,
-                alpha: 1.0,
-                time: 0.0
-              ))
-        elif note.isHoldNote and note.hit and not note.released:
-          let holdEndTime = note.time + note.length
-          let timeToHoldEnd = holdEndTime - songPosition
+            let timeToHit = note.time - songPosition
+            note.position = float(receptorY) - (timeToHit * chartScrollSpeed)
+            
+            if not note.hit and abs(timeToHit) < BadWindowMs / 1000.0:
+              if keyPressedThisFrame[note.columnIndex]:
+                note.hit = true
+                playerHitCount[note.columnIndex] += 1
+                
+                let timeDiffMs = timeToHit * 1000.0
+                let rating = getHitRating(timeDiffMs)
+                let points = getScorePoints(rating)
+                score += points
+                
+                if not note.isHoldNote:
+                  case rating:
+                    of hrPerfect: playerScoreData["perfect"] += 1
+                    of hrGreat: playerScoreData["great"] += 1
+                    of hrGood: playerScoreData["good"] += 1
+                    of hrOk: playerScoreData["ok"] += 1
+                    of hrBad: playerScoreData["bad"] += 1
+                    of hrMiss: playerScoreData["miss"] += 1
+                  
+                  recentHits.add(HitFeedback(
+                    rating: rating,
+                    column: note.columnIndex,
+                    alpha: 1.0,
+                    time: 0.0
+                  ))
+            elif note.isHoldNote and note.hit and not note.released:
+              let holdEndTime = note.time + note.length
+              let timeToHoldEnd = holdEndTime - songPosition
+              
+              if not notePressedStates[note.columnIndex]:
+                note.released = true
+                let releaseTimeDiffMs = timeToHoldEnd * 1000.0
+                let releaseRating = if releaseTimeDiffMs <= -BadWindowMs: hrMiss else: getHitRating(releaseTimeDiffMs)
+                let releasePoints = getScorePoints(releaseRating) div 2
+                
+                score += releasePoints
+                
+                case releaseRating:
+                  of hrPerfect: playerScoreData["perfect"] += 1
+                  of hrGreat: playerScoreData["great"] += 1
+                  of hrGood: playerScoreData["good"] += 1
+                  of hrOk: playerScoreData["ok"] += 1
+                  of hrBad: playerScoreData["bad"] += 1
+                  of hrMiss: playerScoreData["miss"] += 1
+                
+                recentHits.add(HitFeedback(
+                  rating: releaseRating,
+                  column: note.columnIndex,
+                  alpha: 1.0,
+                  time: 0.0
+                ))
+              elif timeToHoldEnd < -BadWindowMs / 1000.0:
+                # hold ends naturally
+                note.released = true
+                playerScoreData["perfect"] += 1
+                score += getScorePoints(hrPerfect) div 2
+                
+                recentHits.add(HitFeedback(
+                  rating: hrPerfect,
+                  column: note.columnIndex,
+                  alpha: 1.0,
+                  time: 0.0
+                ))
+            elif timeToHit < -BadWindowMs / 1000.0 and note.position > float(receptorY + SpriteUpscale):
+              if not note.hit:
+                notesToCheck.add(note)
           
-          if not notePressedStates[note.columnIndex]:
-            note.released = true
-            let releaseTimeDiffMs = timeToHoldEnd * 1000.0
-            let releaseRating = if releaseTimeDiffMs <= -BadWindowMs: hrMiss else: getHitRating(releaseTimeDiffMs)
-            let releasePoints = getScorePoints(releaseRating) div 2
+          for i in countdown(recentHits.len - 1, 0):
+            recentHits[i].time += deltaTime
+            recentHits[i].alpha = 1.0 - (recentHits[i].time / 0.8)
             
-            score += releasePoints
-            
-            case releaseRating:
-              of hrPerfect: playerScoreData["perfect"] += 1
-              of hrGreat: playerScoreData["great"] += 1
-              of hrGood: playerScoreData["good"] += 1
-              of hrOk: playerScoreData["ok"] += 1
-              of hrBad: playerScoreData["bad"] += 1
-              of hrMiss: playerScoreData["miss"] += 1
-            
-            recentHits.add(HitFeedback(
-              rating: releaseRating,
-              column: note.columnIndex,
-              alpha: 1.0,
-              time: 0.0
-            ))
-          elif timeToHoldEnd < -BadWindowMs / 1000.0:
-            # hold ends naturally
-            note.released = true
-            playerScoreData["perfect"] += 1
-            score += getScorePoints(hrPerfect) div 2
-            
-            recentHits.add(HitFeedback(
-              rating: hrPerfect,
-              column: note.columnIndex,
-              alpha: 1.0,
-              time: 0.0
-            ))
-        elif timeToHit < -BadWindowMs / 1000.0 and note.position > float(receptorY + SpriteUpscale):
-          if not note.hit:
-            notesToCheck.add(note)
-      
-      for i in countdown(recentHits.len - 1, 0):
-        recentHits[i].time += deltaTime
-        recentHits[i].alpha = 1.0 - (recentHits[i].time / 0.8)
-        
-        if recentHits[i].alpha <= 0:
-          recentHits.delete(i)
-      
-      # for note in notesToCheck:
-      #   if not note.hit:
-      #     note.hit = true
-      #     playerScoreData["miss"] += 1
-
-      ## Hit check: Generic notes
-      for note in notesToCheck:
-        let timeDiffMs = (note.time - songPosition) * 1000.0
-        let withinHitWindow = abs(timeDiffMs) <= BadWindowMs
-        let pastHitWindow = timeDiffMs < -BadWindowMs
-        
-        if not note.hit:
-          if withinHitWindow and notePressedStates[note.columnIndex]:
-            note.hit = true
-            let rating = getHitRating(timeDiffMs)
-            let points = getScorePoints(rating)
-            
-            score += points
-            
-            case rating:
-              of hrPerfect: playerScoreData["perfect"] += 1
-              of hrGreat: playerScoreData["great"] += 1
-              of hrGood: playerScoreData["good"] += 1
-              of hrOk: playerScoreData["ok"] += 1
-              of hrBad: playerScoreData["bad"] += 1
-              of hrMiss: playerScoreData["miss"] += 1
-            
-            recentHits.add(HitFeedback(
-              rating: rating,
-              column: note.columnIndex,
-              alpha: 1.0,
-              time: 0.0
-            ))
-          # passed hit window without being hit
-          elif pastHitWindow:
-            note.hit = true
-            if note.isHoldNote:
-              note.released = true # hold notes are marked as released if missed initially
-            
-            playerScoreData["miss"] += 1
-            
-            recentHits.add(HitFeedback(
-              rating: hrMiss,
-              column: note.columnIndex,
-              alpha: 1.0,
-              time: 0.0
-            ))
-      
-      ## Hit check: Hold notes
-      for note in notesToCheck:
-        if note.isHoldNote and note.hit and not note.released:
-          let holdEndTime = note.time + note.length
-          let timeToHoldEnd = holdEndTime - songPosition
+            if recentHits[i].alpha <= 0:
+              recentHits.delete(i)
           
-          # Player released early
-          if not notePressedStates[note.columnIndex]:
-            note.released = true
-            
-            # rating based on release
-            let releaseTimeDiffMs = timeToHoldEnd * 1000.0
-            let releaseRating = if releaseTimeDiffMs > BadWindowMs: hrMiss else: getHitRating(releaseTimeDiffMs)
-            let releasePoints = getScorePoints(releaseRating) div 2
-            
-            score += releasePoints
-            
-            case releaseRating:
-              of hrPerfect: playerScoreData["perfect"] += 1
-              of hrGreat: playerScoreData["great"] += 1
-              of hrGood: playerScoreData["good"] += 1
-              of hrOk: playerScoreData["ok"] += 1
-              of hrBad: playerScoreData["bad"] += 1
-              of hrMiss: playerScoreData["miss"] += 1
-            
-            recentHits.add(HitFeedback(
-              rating: releaseRating,
-              column: note.columnIndex,
-              alpha: 1.0,
-              time: 0.0
-            ))
-          # hold note finished fully
-          elif timeToHoldEnd <= 0:
-            note.released = true
-            playerScoreData["perfect"] += 1
-            score += getScorePoints(hrPerfect) div 2
-            
-            recentHits.add(HitFeedback(
-              rating: hrPerfect,
-              column: note.columnIndex,
-              alpha: 1.0,
-              time: 0.0
-            ))
-      
-      currentChart.notes.keepItIf(not it.hit or it.position > -200)
-    
-    beginDrawing()
-    clearBackground(Gray)
-    drawFPS(10, 10)
-    
-    let songTitle = currentChart.songTitle
-    let titleWidth = measureText(songTitle, 24)
-    let titleX = int32((screenWidth - titleWidth) div 2)
-    drawText(songTitle, titleX, 20, 24, DarkBlue)
-    
-    # Record UI
-    if isRecording:
-      drawRecordingUI(recordedNotes)
-    
-    # Countdown
-    if songPosition < 0:
-      let countdownText = $(-int(songPosition) + 1)
-      let textWidth = measureText(countdownText, 40)
-      let countdownX = int32((screenWidth - textWidth) div 2)
-      drawText(countdownText, countdownX, 100, 40, Red)
-    else:
-      # stats
-      drawText(fmt"Time: {songPosition:.2f}s", 10, 40, 20, Black)
-      
-      # Score breakdown
-      if not isRecording:
-        drawPlayerStats(score)
-    
-    drawReceptors(
-      startX, 
-      receptorY, 
-      totalNotesWidth, 
-      noteSpacing, 
-      receptorLineY, 
-      receptorLineHeight, 
-      noteTextY
-    )
-    
-    # hit rating
-    drawHitRatings(startX, noteSpacing, receptorY)
-    
-    # Fallin notes
-    if not isRecording:
-      drawNotes(startX, noteSpacing, chartScrollSpeed, receptorY)
-    
-    endDrawing()
+          # for note in notesToCheck:
+          #   if not note.hit:
+          #     note.hit = true
+          #     playerScoreData["miss"] += 1
 
+          ## Hit check: Generic notes
+          for note in notesToCheck:
+            let timeDiffMs = (note.time - songPosition) * 1000.0
+            let withinHitWindow = abs(timeDiffMs) <= BadWindowMs
+            let pastHitWindow = timeDiffMs < -BadWindowMs
+            
+            if not note.hit:
+              if withinHitWindow and notePressedStates[note.columnIndex]:
+                note.hit = true
+                let rating = getHitRating(timeDiffMs)
+                let points = getScorePoints(rating)
+                
+                score += points
+                
+                case rating:
+                  of hrPerfect: playerScoreData["perfect"] += 1
+                  of hrGreat: playerScoreData["great"] += 1
+                  of hrGood: playerScoreData["good"] += 1
+                  of hrOk: playerScoreData["ok"] += 1
+                  of hrBad: playerScoreData["bad"] += 1
+                  of hrMiss: playerScoreData["miss"] += 1
+                
+                recentHits.add(HitFeedback(
+                  rating: rating,
+                  column: note.columnIndex,
+                  alpha: 1.0,
+                  time: 0.0
+                ))
+              # passed hit window without being hit
+              elif pastHitWindow:
+                note.hit = true
+                if note.isHoldNote:
+                  note.released = true # hold notes are marked as released if missed initially
+                
+                playerScoreData["miss"] += 1
+                
+                recentHits.add(HitFeedback(
+                  rating: hrMiss,
+                  column: note.columnIndex,
+                  alpha: 1.0,
+                  time: 0.0
+                ))
+          
+          ## Hit check: Hold notes
+          for note in notesToCheck:
+            if note.isHoldNote and note.hit and not note.released:
+              let holdEndTime = note.time + note.length
+              let timeToHoldEnd = holdEndTime - songPosition
+              
+              # Player released early
+              if not notePressedStates[note.columnIndex]:
+                note.released = true
+                
+                # rating based on release
+                let releaseTimeDiffMs = timeToHoldEnd * 1000.0
+                let releaseRating = if releaseTimeDiffMs > BadWindowMs: hrMiss else: getHitRating(releaseTimeDiffMs)
+                let releasePoints = getScorePoints(releaseRating) div 2
+                
+                score += releasePoints
+                
+                case releaseRating:
+                  of hrPerfect: playerScoreData["perfect"] += 1
+                  of hrGreat: playerScoreData["great"] += 1
+                  of hrGood: playerScoreData["good"] += 1
+                  of hrOk: playerScoreData["ok"] += 1
+                  of hrBad: playerScoreData["bad"] += 1
+                  of hrMiss: playerScoreData["miss"] += 1
+                
+                recentHits.add(HitFeedback(
+                  rating: releaseRating,
+                  column: note.columnIndex,
+                  alpha: 1.0,
+                  time: 0.0
+                ))
+              # hold note finished fully
+              elif timeToHoldEnd <= 0:
+                note.released = true
+                playerScoreData["perfect"] += 1
+                score += getScorePoints(hrPerfect) div 2
+                
+                recentHits.add(HitFeedback(
+                  rating: hrPerfect,
+                  column: note.columnIndex,
+                  alpha: 1.0,
+                  time: 0.0
+                ))
+          
+          currentChart.notes.keepItIf(not it.hit or it.position > -200)
+        beginDrawing()
+        drawGameUI(
+          startX, 
+          receptorY, 
+          totalNotesWidth, 
+          noteSpacing, 
+          receptorLineY, 
+          receptorLineHeight, 
+          noteTextY, 
+          chartScrollSpeed
+        )
+        endDrawing()
+      of GameState.MainMenu:
+        updateMenu()
+        drawMenu()
+      of GameState.Results:
+        updateResults()
+        drawResults()
+      else:
+        echo "unhandled game state!"
+        break
   closeWindow()
 
 main()
