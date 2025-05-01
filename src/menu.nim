@@ -52,6 +52,7 @@ proc initMenu*() =
     logoTexture = loadTexture("assets/eny/eny.png")
     logoLoaded = true
 
+
 proc updateMenu*() =
   let mousePos = getMousePosition()
 
@@ -254,7 +255,7 @@ proc drawMenu*() =
   else:
     drawText("by okzyrox!", 20, getScreenHeight() - 40, 20, LightGray)
   
-  drawText("v0.0.1", getScreenWidth() - 100, getScreenHeight() - 40, 20, LightGray)
+  drawText("v0.1.0", getScreenWidth() - 100, getScreenHeight() - 40, 20, LightGray)
   drawText("Press ESC to exit", 20, 20, 20, LightGray)
 
   endDrawing()
