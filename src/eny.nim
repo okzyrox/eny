@@ -2,7 +2,9 @@
 ## 
 ## cc: okzyrox
 import raylib
-import std/[tables, strformat, sequtils, math]
+import discord_rpc
+
+import std/[tables, strformat, sequtils, math, options]
 
 import ./[
   hit_rating,
@@ -329,6 +331,26 @@ proc updateRecording(songPosition: float) =
       
       holdStartTimes[index] = -1.0
 
+proc initRichPresence() =
+  let
+    applicationId = 1358181398514630958
+  
+  discordPresence = newDiscordRPC(applicationId)
+
+  try:
+    discard discordPresence.connect
+
+    discordPresence.setActivity Activity(
+      details: "okzyrox's epic rhythm game",
+      state: "on the main menu",
+      assets: some ActivityAssets(
+        largeImage: "eny",
+        largeText: "Playing eny"
+      )
+    )
+  except Exception as e:
+    echo "Failed to connect to Discord RPC: ", e.msg
+
 proc main() =
   # load raylib
 
@@ -384,6 +406,7 @@ proc main() =
   var notesToCheck: seq[ChartNote] = @[]
 
   initMenu()
+  initRichPresence()
 
   while not windowShouldClose():
     updateKeyStates()
@@ -420,7 +443,7 @@ proc main() =
             currentResults.bad = playerScoreData["bad"]
             currentResults.miss = playerScoreData["miss"]
             songStarted = false
-            currentState = GameState.Results
+            setState(GameState.Results)
             
         if songEnded:
           break
@@ -436,7 +459,7 @@ proc main() =
           songStarted = false
           stopMusicStream(currentSong)
           initMenu() # reset menu state to reload songs list
-          currentState = GameState.MainMenu
+          setState(GameState.MainMenu)
         
         if not isRecording:
           notesToCheck.setLen(0)

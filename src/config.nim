@@ -2,7 +2,7 @@
 ## 
 ## cc: okzyrox
 import raylib
-import std/[json, os, json]
+import std/[json, os]
 
 type
   EnyConfig* = object

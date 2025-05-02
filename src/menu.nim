@@ -1,5 +1,6 @@
 import raylib
-import std/[math, browsers]
+import discord_rpc
+import std/[math, browsers, options]
 import menuchart, states, chart
 
 const
@@ -77,7 +78,7 @@ proc updateMenu*() =
     isRecording = true
     currentConfig.isRecordingMode = true
     loadSong(currentConfig.recordingModeSongName)
-    currentState = GameState.Playing
+    setState(GameState.Playing) # temp
     return
   
   if menuState.authorCreditsHovered and isMouseButtonReleased(MouseButton.Left):
@@ -127,7 +128,15 @@ proc updateMenu*() =
         currentChart.startTime = -3.0
         currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
         setMusicVolume(currentSong, 0.5)
-        currentState = GameState.Playing
+        setState(GameState.Playing)
+        discordPresence.setActivity Activity(
+          details: "okzyrox's epic rhythm game",
+          state: "playing " & currentChart.songTitle,
+          assets: some ActivityAssets(
+            largeImage: "eny",
+            largeText: "Playing eny"
+          )
+        )
         return
 
 proc drawMenu*() =

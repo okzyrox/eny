@@ -19,3 +19,8 @@ eny.json
 # converter
 
 QuaToEnyConverter/**
+tools/out/**
+
+# testing
+
+build2.bat
