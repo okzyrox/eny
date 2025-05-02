@@ -3,24 +3,12 @@ import states
 
 import std/[math, strformat]
 
-type
-  GameResults* = object
-    score*: int
-    maxCombo*: int
-    accuracy*: float
-    perfect*: int
-    great*: int
-    good*: int
-    ok*: int
-    bad*: int
-    miss*: int
-
-var currentResults*: GameResults
 var accuracy: float = 0.0
 
 proc updateResults*() =
-  if isKeyPressed(Space) or isMouseButtonPressed(Left):
-    currentState = GameState.MainMenu
+  if isKeyPressed(Space) or isMouseButtonReleased(Left):
+    resetGameState()
+    setState(MainMenu)
   
   accuracy = round(currentResults.accuracy * 100, 2)
 
@@ -62,4 +50,5 @@ proc drawResults*() =
   
   drawText("Press SPACE or click to continue", screenWidth div 2 - 200, screenHeight - 100, 30, LightGray)
 
+  drawDebugInfo()
   endDrawing()

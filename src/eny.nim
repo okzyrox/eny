@@ -43,29 +43,6 @@ var keyPressedThisFrame: Table[int, bool] = {
   3: false
 }.toTable
 
-var playerScoreData: Table[string, int] = {
-  "perfect": 0,
-  "great": 0,
-  "good": 0,
-  "ok": 0,
-  "bad": 0,
-  "miss": 0
-}.toTable
-
-var playerHitCount: Table[int, int] = {
-  0: 0,
-  1: 0,
-  2: 0,
-  3: 0
-}.toTable
-
-var holdStartTimes: Table[int, float] = {
-  0: -1.0,
-  1: -1.0,
-  2: -1.0,
-  3: -1.0
-}.toTable
-
 var keyReleasedThisFrame: Table[int, bool] = {
   0: false,
   1: false,
@@ -82,25 +59,10 @@ var prevNotePressedStates: Table[int, bool] = {
 
 var activeNoteDrawTable: Table[int, ref Note]
 var inactiveNoteDrawTable: Table[int, ref Note]
-var recentHits: seq[HitFeedback] = newSeqOfCap[HitFeedback](128)
 var recordedNotes: seq[RecordedNote] = @[]
 
 var screenHeight: int32
 var screenWidth: int32
-
-var currentResults: GameResults = GameResults(
-  score: 0,
-  maxCombo: 0,
-  accuracy: 0.0,
-  perfect: 0,
-  good: 0,
-  miss: 0
-)
-
-var chartLength: float = 0.0
-
-var songPosition: float = 0.0
-var score: int = 0
 
 proc updateKeyStates() =
   for key, index in KeyboardBinds:
@@ -302,7 +264,6 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
   # Fallin notes
   if not isRecording:
     drawNotes(startX, noteSpacing, chartScrollSpeed, receptorY)
-  
 
 proc updateRecording(songPosition: float) =
   for key, index in KeyboardBinds:
@@ -354,7 +315,7 @@ proc initRichPresence() =
 proc main() =
   # load raylib
 
-  initWindow(800, 600, "eny")
+  initWindow(1280, 720, "eny")
   setTargetFPS(144)
   initAudioDevice()
   setConfigFlags(flags(VsyncHint))
@@ -388,9 +349,9 @@ proc main() =
   let receptorLineHeight = 4
   
   # update vars
-  var gameTime = 0.0
-  var songStarted = false
-  var songEnded = false
+  # var gameTime = 0.0
+  # var songStarted = false
+  # var songEnded = false
   # var score = 0
   let chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
 
@@ -420,8 +381,10 @@ proc main() =
           echo "Chart is nil!"
           break
 
-        if chartLength == 0.0 and not isRecording:
+        if (songPosition == 0.0 or chartLength == 0.0) and not isRecording:
           chartLength = getChartSecondsLength(currentChart)
+          echo chartLength
+          echo currentChart.songTitle
           if chartLength == 0.0:
             echo "Chart length is 0!"
             break
@@ -433,7 +396,7 @@ proc main() =
         
         if songStarted:
           updateMusicStream(currentSong)
-          if songPosition >= chartLength and not isRecording:
+          if songPosition > chartLength and not isRecording:
             stopMusicStream(currentSong)
             currentResults.score = score
             currentResults.perfect = playerScoreData["perfect"]
@@ -443,10 +406,12 @@ proc main() =
             currentResults.bad = playerScoreData["bad"]
             currentResults.miss = playerScoreData["miss"]
             songStarted = false
+            songPosition = 0.0
+            chartLength = 0.0
             setState(GameState.Results)
             
-        if songEnded:
-          break
+        # if songEnded:
+        #   break
 
         # Recording mode
         #  and songPosition >= 0
@@ -649,6 +614,7 @@ proc main() =
           noteTextY, 
           chartScrollSpeed
         )
+        drawDebugInfo()
         endDrawing()
       of GameState.MainMenu:
         updateMenu()

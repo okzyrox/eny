@@ -124,6 +124,7 @@ proc updateMenu*() =
     if checkCollisionPointRec(mousePos, rect):
       menuState.selectedChart = i
       if isMouseButtonReleased(MouseButton.Left):
+        resetGameState()
         currentChart = loadChart(menuState.charts[i].path)
         currentChart.startTime = -3.0
         currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
@@ -267,4 +268,5 @@ proc drawMenu*() =
   drawText("v0.1.0", getScreenWidth() - 100, getScreenHeight() - 40, 20, LightGray)
   drawText("Press ESC to exit", 20, 20, 20, LightGray)
 
+  drawDebugInfo()
   endDrawing()

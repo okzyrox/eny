@@ -1,17 +1,61 @@
-import chart, config
+import chart, config, hit_rating
 import raylib 
 import discord_rpc
-import std/[os, options]
+import std/[os, options, tables, strformat]
 type
   GameState* = enum
     MainMenu, Playing, Results, Recording
+
+type
+  GameResults* = object
+    score*: int
+    maxCombo*: int
+    accuracy*: float
+    perfect*: int
+    great*: int
+    good*: int
+    ok*: int
+    bad*: int
+    miss*: int
 
 var currentState*: GameState = MainMenu
 var currentChart*: Chart
 var currentConfig*: EnyConfig
 var currentSong*: Music
+var currentResults*: GameResults
 var discordPresence*: DiscordRPC
 var isRecording*: bool = false
+var songStarted*: bool = false
+var songPaused*: bool = false
+var songEnded*: bool = false
+var songPosition*: float = 0.0
+var gameTime*: float = 0.0
+var chartLength*: float = 0.0
+var score*: int = 0
+var recentHits*: seq[HitFeedback] = newSeqOfCap[HitFeedback](128)
+
+var playerScoreData*: Table[string, int] = {
+  "perfect": 0,
+  "great": 0,
+  "good": 0,
+  "ok": 0,
+  "bad": 0,
+  "miss": 0
+}.toTable
+
+var playerHitCount*: Table[int, int] = {
+  0: 0,
+  1: 0,
+  2: 0,
+  3: 0
+}.toTable
+
+var holdStartTimes*: Table[int, float] = {
+  0: -1.0,
+  1: -1.0,
+  2: -1.0,
+  3: -1.0
+}.toTable
 
 proc loadSong*(filePath: string) =
   if isRecording:
@@ -75,4 +119,47 @@ proc setState*(state: GameState) =
           largeText: "Playing eny"
         )
       )
-    
+
+proc resetGameState*() =
+  gameTime = 0.0
+  songPosition = 0.0
+  songStarted = false
+  songEnded = false
+  chartLength = 0.0
+  
+  score = 0
+  
+  for key in playerScoreData.keys:
+    playerScoreData[key] = 0
+  
+  for i in 0..3:
+    playerHitCount[i] = 0
+    holdStartTimes[i] = -1.0
+  
+  recentHits.setLen(0)
+  
+  if currentChart != nil:
+    for note in currentChart.notes.mitems:
+      note.hit = false
+      note.released = false
+      note.position = 0.0
+  
+  currentResults = GameResults(
+    score: 0,
+    maxCombo: 0,
+    accuracy: 0.0,
+    perfect: 0,
+    great: 0,
+    good: 0,
+    ok: 0,
+    bad: 0,
+    miss: 0
+  )
+
+proc drawDebugInfo*() =
+  drawText("Debug Info:", 10, getScreenHeight() - 150, 18, Yellow)
+  drawText(fmt"songStarted: {songStarted}", 10, getScreenHeight() - 130, 16, White)
+  drawText(fmt"songEnded: {songEnded}", 10, getScreenHeight() - 110, 16, White)
+  drawText(fmt"chartLength: {chartLength}", 10, getScreenHeight() - 90, 16, White)
+  drawText(fmt"songPosition: {songPosition}", 10, getScreenHeight() - 70, 16, White)
+  drawText(fmt"currentState: {currentState}", 10, getScreenHeight() - 50, 16, White)
