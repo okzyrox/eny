@@ -77,12 +77,12 @@ proc updateKeyStates() =
 proc drawRecordingUI(recordedNotes: seq[RecordedNote]) = 
   let recordingText = "RECORDING"
   let textWidth = measureText(recordingText, 20)
-  drawText(recordingText, int32(screenWidth - textWidth - 10), 10, 20, Red)
-  drawText("Press G to save", int32(screenWidth - measureText("Press G to save", 16) - 10), 35, 16, Red)
-  drawText(fmt"Total Notes: {recordedNotes.len}", 10, 70, 20, Black)
+  drawText(recordingText, int32(screenWidth - textWidth - 10), 10, 20, AccentColor)
+  drawText("Press G to save", int32(screenWidth - measureText("Press G to save", 16) - 10), 35, 16, AccentColor)
+  drawText(fmt"Total Notes: {recordedNotes.len}", 10, 70, 20, TextColor)
 
 proc drawPlayerStats(playerScore: int) =
-  drawText(fmt"Score: {playerScore}", 10, 70, 20, DarkGreen)
+  drawText(fmt"Score: {playerScore}", 10, 70, 20, AccentColor2)
   let statY = int32(100)
   let perfectText = "PERFECT: " & $playerScoreData["perfect"]
   let greatText = "GREAT: " & $playerScoreData["great"]
@@ -157,7 +157,7 @@ proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacin
     let textWidth = measureText(keyName, 20)
     let textX = int32(noteX + (SpriteUpscale - textWidth) div 2)
     let noteTextY32 = int32(noteTextY)
-    drawText(keyName, textX, noteTextY32, 20, White)
+    drawText(keyName, textX, noteTextY32, 20, AccentColor)
 
 proc drawHitRatings(startX: int, noteSpacing: int, receptorY: int) = 
   for hit in recentHits:
@@ -222,13 +222,13 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
           drawTexture(inactiveNoteDrawTable[note.columnIndex].texture, noteX, int32(note.position), White)
 
 proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing: int, receptorLineY: int, receptorLineHeight: int, noteTextY: int, chartScrollSpeed: float) =
-  clearBackground(Gray)
+  clearBackground(BackgroundColor)
   drawFPS(10, 10)
   
   let songTitle = currentChart.songTitle
   let titleWidth = measureText(songTitle, 24)
   let titleX = int32((screenWidth - titleWidth) div 2)
-  drawText(songTitle, titleX, 20, 24, DarkBlue)
+  drawText(songTitle, titleX, 20, 24, AccentColor2)
   
   # Record UI
   if isRecording:
@@ -239,10 +239,10 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
     let countdownText = $(-int(songPosition) + 1)
     let textWidth = measureText(countdownText, 40)
     let countdownX = int32((screenWidth - textWidth) div 2)
-    drawText(countdownText, countdownX, 100, 40, Red)
+    drawText(countdownText, countdownX, 100, 40, AccentColor)
   else:
     # stats
-    drawText(fmt"Time: {songPosition:.2f}s", 10, 40, 20, Black)
+    drawText(fmt"Time: {songPosition:.2f}s", 10, 40, 20, TextColor)
     
     # Score breakdown
     if not isRecording:

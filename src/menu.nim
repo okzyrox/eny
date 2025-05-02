@@ -142,7 +142,7 @@ proc updateMenu*() =
 
 proc drawMenu*() =
   beginDrawing()
-  clearBackground(Color(r: 15, g: 15, b: 25, a: 255))
+  clearBackground(BackgroundColor2)
 
   if logoLoaded:
     let screenWidth = getScreenWidth()
@@ -166,7 +166,7 @@ proc drawMenu*() =
   
   let titleText = "Eny"
   let titleWidth = len(titleText) * 20
-  drawText(titleText, (getScreenWidth() div 2 - titleWidth div 2).int32, TitlePadding, TitleSize, Pink)
+  drawText(titleText, (getScreenWidth() div 2 - titleWidth div 2).int32, TitlePadding, TitleSize, EnyPink)
 
   # record btn
   let recordBtnRect = Rectangle(
@@ -192,7 +192,7 @@ proc drawMenu*() =
     width: MenuItemWidth.float + 40,
     height: contentHeight.float + 20
   )
-  drawRectangleRoundedLines(containerRect, 0.05, 10, 2, fade(White, 0.3))
+  drawRectangleRoundedLines(containerRect, 0.05, 10, 2, fade(AccentColor, 0.3))
   
   let totalContentHeight = menuState.charts.len * (MenuItemHeight + MenuItemPadding)
   let minScroll = min(0.0, contentHeight.float - totalContentHeight.float)
@@ -229,22 +229,22 @@ proc drawMenu*() =
     let rect = Rectangle(x: xPos, y: yPos.float, width: width, height: height)
     
     if menuState.selectedChart == i:
-      drawRectangleRounded(rect, 0.5, 10, colorAlpha(DarkPurple, 0.8))
+      drawRectangleRounded(rect, 0.5, 10, colorAlpha(BackgroundColor, 0.8))
     else:
-      drawRectangleRounded(rect, 0.5, 10, colorAlpha(DarkPurple, 0.5))
+      drawRectangleRounded(rect, 0.5, 10, colorAlpha(BackgroundColor, 0.5))
     drawRectangleRoundedLines(rect, 0.5, 10, White)
     
     let title = if chart.title.len > 0: chart.title else: "Unknown Title"
     let artist = if chart.artist.len > 0: "Artist: " & chart.artist else: ""
     let creator = if chart.creator.len > 0: "Charter: " & chart.creator else: ""
     
-    drawText(title, xPos.int32 + 20, yPos.int32 + 15, 24, White)
+    drawText(title, xPos.int32 + 20, yPos.int32 + 15, 24, AccentColor2)
     
     if artist.len > 0:
-      drawText(artist, xPos.int32 + 20, yPos.int32 + 45, 18, LightGray)
+      drawText(artist, xPos.int32 + 20, yPos.int32 + 45, 18, MiscTextColor)
     
     if creator.len > 0:
-      drawText(creator, xPos.int32 + 20, yPos.int32 + 70, 18, LightGray)
+      drawText(creator, xPos.int32 + 20, yPos.int32 + 70, 18, MiscTextColor)
     
     if chart.difficultyName.len > 0:
       let diffText = chart.difficultyName
@@ -261,12 +261,12 @@ proc drawMenu*() =
       drawText("UP", getScreenWidth() div 2 - 10, (contentTop - 30).int32, 30, colorAlpha(White, 0.6))
   
   if menuState.authorCreditsHovered:
-    drawText("by okzyrox!!!", 20, getScreenHeight() - 40, 20, Purple)
+    drawText("by okzyrox!!!", 20, getScreenHeight() - 40, 20, AccentColor2)
   else:
-    drawText("by okzyrox!", 20, getScreenHeight() - 40, 20, LightGray)
+    drawText("by okzyrox!", 20, getScreenHeight() - 40, 20, MiscTextColor)
   
-  drawText("v0.1.0", getScreenWidth() - 100, getScreenHeight() - 40, 20, LightGray)
-  drawText("Press ESC to exit", 20, 20, 20, LightGray)
+  drawText("v0.1.0", getScreenWidth() - 100, getScreenHeight() - 40, 20, EnyPink)
+  drawText("Press ESC to exit", 20, 20, 20, MiscTextColor)
 
   drawDebugInfo()
   endDrawing()

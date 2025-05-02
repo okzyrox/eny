@@ -18,6 +18,17 @@ type
     bad*: int
     miss*: int
 
+const
+  BackgroundColor* = Color(r: 48, g: 25, b: 52, a: 255)
+  BackgroundColor2* = Color(r: 30, g: 10, b: 20, a: 255)
+  BackgroundColor3* = Color(r: 15, g: 15, b: 25, a: 255)
+  BackgroundColor4* = Color(r: 41, g: 8, b: 47, a: 255)
+  AccentColor* = Color(r: 230, g: 230, b: 250, a: 255)
+  AccentColor2* = Color(r: 207, g: 159, b: 255, a: 255)
+  TextColor* = Color(r: 239, g: 209, b: 229, a: 255)
+  MiscTextColor* = Color(r: 150, g: 150, b: 150, a: 255)
+  EnyPink* = Color(r: 229, g: 88, b: 170 , a: 255)
+
 var currentState*: GameState = MainMenu
 var currentChart*: Chart
 var currentConfig*: EnyConfig
