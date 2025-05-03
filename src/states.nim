@@ -171,7 +171,8 @@ proc resetGameState*() =
 
 let startX = int32(250)
 proc drawDebugInfo*() =
-  drawText("Debug Info:", 10, getScreenHeight() - startX + 30, 18, Yellow)
+  drawText("Debug Info:", 10, getScreenHeight() - startX + 10, 18, Yellow)
+  drawFPS(10, getScreenHeight() - startX + 30)
   drawText(fmt"songStarted: {songStarted}", 10, getScreenHeight() - startX + 50, 16, White)
   drawText(fmt"songEnded: {songEnded}", 10, getScreenHeight() - startX + 70, 16, White)
   drawText(fmt"chartLength: {chartLength}", 10, getScreenHeight() - startX + 90, 16, White)

@@ -232,7 +232,6 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
 
 proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing: int, receptorLineY: int, receptorLineHeight: int, noteTextY: int, chartScrollSpeed: float) =
   clearBackground(BackgroundColor)
-  drawFPS(10, 10)
   
   let songTitle = currentChart.songTitle
   let titleWidth = measureText(songTitle, 24)
