@@ -528,11 +528,12 @@ proc main() =
               if not notePressedStates[note.columnIndex]:
                 note.released = true
                 let releaseTimeDiffMs = timeToHoldEnd * 1000.0
-                let releaseRating = if releaseTimeDiffMs <= -BadWindowMs: hrMiss else: getHitRating(releaseTimeDiffMs)
+                var releaseRating = if releaseTimeDiffMs <= -BadWindowMs: hrBad else: getHitRating(releaseTimeDiffMs)
+                if releaseRating == hrMiss:
+                  releaseRating = hrBad
                 let releasePoints = getScorePoints(releaseRating) div 2
-                
                 currentResults.score += releasePoints
-                
+        
                 case releaseRating:
                   of hrPerfect: currentResults.perfect += 1
                   of hrGreat: currentResults.great += 1
@@ -640,7 +641,9 @@ proc main() =
                 
                 # rating based on release
                 let releaseTimeDiffMs = timeToHoldEnd * 1000.0
-                let releaseRating = if releaseTimeDiffMs > BadWindowMs: hrMiss else: getHitRating(releaseTimeDiffMs)
+                var releaseRating = if releaseTimeDiffMs > BadWindowMs: hrBad else: getHitRating(releaseTimeDiffMs)
+                if releaseRating == hrMiss:
+                  releaseRating = hrBad
                 let releasePoints = getScorePoints(releaseRating) div 2
                 
                 currentResults.score += releasePoints

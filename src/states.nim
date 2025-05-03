@@ -206,5 +206,7 @@ proc drawDebugInfo*() =
     drawText(fmt"currentResults: {currentResults}", 10, getScreenHeight() - startX + 210, 16, White)
     drawText(fmt"playerHitCount (1, 2, 3, 4): {playerHitCount[0]}, {playerHitCount[1]}, {playerHitCount[2]}, {playerHitCount[3]}", 10, getScreenHeight() - startX + 230, 16, White)
   else:
-    drawText("No chart loaded", 10, getScreenHeight() - startX + 170, 16, White)
+    if currentState == MainMenu:
+      drawText(fmt"cachedPreviewLength: {previewMusicCache.len}", 10, getScreenHeight() - startX + 170, 16, White)
+      drawText(fmt"currentPreviewSong: {currentPreviewSong}", 10, getScreenHeight() - startX + 190, 16, White)
 

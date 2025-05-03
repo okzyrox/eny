@@ -292,6 +292,7 @@ proc updateMenu*() =
           let index = songListItems.find(interactable)
           if index >= 0:
             cleanupMenu()
+            cleanupPreviewCache()
             resetGameState()
             currentChart = loadChart(interactable.data)
             currentChart.startTime = -3.0
@@ -324,7 +325,6 @@ proc updateMenu*() =
 proc drawMenu*() =
   beginDrawing()
   clearBackground(BackgroundColor2)
-  
   # logo
   if logoLoaded:
     let screenWidth = getScreenWidth()
