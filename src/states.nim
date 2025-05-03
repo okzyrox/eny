@@ -63,7 +63,7 @@ var holdStartTimes*: Table[int, float] = {
   3: -1.0
 }.toTable
 
-var lastHitNotes: Table[int, float] = {
+var lastHitNotes*: Table[int, float] = {
   0: -1000.0,
   1: -1000.0,
   2: -1000.0,

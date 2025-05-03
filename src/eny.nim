@@ -312,8 +312,6 @@ proc updateCombo(rating: HitRating) =
     currentResults.currentCombo += 1
     if currentResults.currentCombo > currentResults.maxCombo:
       currentResults.maxCombo = currentResults.currentCombo
-  echo currentResults.currentCombo
-  echo currentResults.maxCombo
   # accuracy
   let totalNotes = currentResults.perfect + currentResults.great + 
                   currentResults.good + currentResults.ok + 
@@ -414,8 +412,6 @@ proc main() =
 
         if (songPosition == 0.0 or chartLength == 0.0) and not isRecording:
           chartLength = getChartSecondsLength(currentChart)
-          echo chartLength
-          echo currentChart.songTitle
           if chartLength == 0.0:
             echo "Chart length is 0!"
             break
@@ -548,28 +544,35 @@ proc main() =
             
             if not note.hit:
               if withinHitWindow and notePressedStates[note.columnIndex]:
-                note.hit = true
-                let rating = getHitRating(timeDiffMs)
-                let points = getScorePoints(rating)
-                
-                currentResults.score += points
-                
-                case rating:
-                  of hrPerfect: currentResults.perfect += 1
-                  of hrGreat: currentResults.great += 1
-                  of hrGood: currentResults.good += 1
-                  of hrOk: currentResults.ok += 1
-                  of hrBad: currentResults.bad += 1
-                  of hrMiss: currentResults.miss += 1
+                let songTimeThreshold = songPosition - 0.04  # 40ms threshold
 
-                updateCombo(rating)
-                
-                recentHits.add(HitFeedback(
-                  rating: rating,
-                  column: note.columnIndex,
-                  alpha: 1.0,
-                  time: 0.0
-                ))
+                # Only register hit if:
+                # 1. new keypress (not holding)
+                # 2. havent hit a note in this column recently
+                if keyPressedThisFrame[note.columnIndex] and lastHitNotes[note.columnIndex] < songTimeThreshold:
+                  note.hit = true
+                  lastHitNotes[note.columnIndex] = songPosition
+                  let rating = getHitRating(timeDiffMs)
+                  let points = getScorePoints(rating)
+                  
+                  currentResults.score += points
+                  
+                  case rating:
+                    of hrPerfect: currentResults.perfect += 1
+                    of hrGreat: currentResults.great += 1
+                    of hrGood: currentResults.good += 1
+                    of hrOk: currentResults.ok += 1
+                    of hrBad: currentResults.bad += 1
+                    of hrMiss: currentResults.miss += 1
+
+                  updateCombo(rating)
+                  
+                  recentHits.add(HitFeedback(
+                    rating: rating,
+                    column: note.columnIndex,
+                    alpha: 1.0,
+                    time: 0.0
+                  ))
               # passed hit window without being hit
               elif pastHitWindow:
                 note.hit = true
