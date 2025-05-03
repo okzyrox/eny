@@ -8,6 +8,7 @@ var accuracy: float = 0.0
 proc updateResults*() =
   if isKeyPressed(Space) or isMouseButtonReleased(Left):
     resetGameState()
+    resetResultsScreenFade()
     setState(MainMenu)
   
   accuracy = round(currentResults.accuracy * 100, 2)
@@ -50,5 +51,23 @@ proc drawResults*() =
   
   drawText("Press SPACE or click to continue", screenWidth div 2 - 200, screenHeight - 100, 30, LightGray)
 
+  if resultsScreenFadeIn:
+    if resultsScreenFadeStartTime == 0.0:
+      resultsScreenFadeStartTime = getTime()  # Or however you track time
+    
+    let fadeInDuration = 1.0  # 1 second fade in
+    let fadeInProgress = (getTime() - resultsScreenFadeStartTime) / fadeInDuration
+    
+    if fadeInProgress < 1.0:
+      screenFadeAlpha = 1.0 - fadeInProgress
+      drawRectangle(0, 0, getScreenWidth(), getScreenHeight(), 
+                    fade(Black, float32(screenFadeAlpha)))
+    else:
+      # complete
+      resultsScreenFadeIn = false
+      screenFadeAlpha = 0.0
+
   drawDebugInfo()
+
+  
   endDrawing()

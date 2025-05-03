@@ -44,10 +44,26 @@ var isRecording*: bool = false
 var songStarted*: bool = false
 var songPaused*: bool = false
 var songEnded*: bool = false
+var songFading*: bool = false
+var songFadeStartTIme*: float = 0.0
+var songFadeDuration*: float = 3.5
+var songEndDelay*: float = 0.0
 var songPosition*: float = 0.0
 var gameTime*: float = 0.0
 var chartLength*: float = 0.0
 var recentHits*: seq[HitFeedback] = newSeqOfCap[HitFeedback](128)
+
+# results screen fade
+var screenFadeAlpha*: float = 0.0
+var resultsScreenFadeIn*: bool = false
+var resultsScreenFadeStartTime*: float = 0.0
+
+# main menu preview stuff
+var previewCooldownTime*: float = 0.0
+var previewCooldownDuration*: float = 0.2  # 200ms cooldown
+var currentPreviewSong*: string = ""
+var previewMusicCache*: Table[string, Music] = initTable[string, Music]()
+var previewMusicActive*: bool = false
 
 var playerHitCount*: Table[int, int] = {
   0: 0,
@@ -168,6 +184,11 @@ proc resetGameState*() =
     miss: 0
   )
 
+proc resetResultsScreenFade*() =
+  songFading = false
+  songFadeStartTime = 0.0
+  screenFadeAlpha = 0.0
+  resultsScreenFadeIn = false
 
 let startX = int32(250)
 proc drawDebugInfo*() =

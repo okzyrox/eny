@@ -64,6 +64,16 @@ var recordedNotes: seq[RecordedNote] = @[]
 var screenHeight: int32
 var screenWidth: int32
 
+proc allNotesCompleted(chart: Chart): bool =
+  if chart.notes.len == 0:
+    return true
+  
+  for note in chart.notes:
+    if not note.hit or (note.isHoldNote and not note.released):
+      return false
+  
+  return true
+
 proc updateKeyStates() =
   for key, index in KeyboardBinds:
     prevNotePressedStates[index] = notePressedStates[index]
@@ -255,7 +265,6 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
     # Score breakdown
     if not isRecording:
       drawPlayerStats()
-  
   drawReceptors(
     startX, 
     receptorY, 
@@ -272,6 +281,10 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
   # Fallin notes
   if not isRecording:
     drawNotes(startX, noteSpacing, chartScrollSpeed, receptorY)
+  
+  # end screen fade
+  if songFading:
+    drawRectangle(0, 0, screenWidth, screenHeight, fade(Black, float32(screenFadeAlpha)))
 
 proc updateRecording(songPosition: float) =
   for key, index in KeyboardBinds:
@@ -397,6 +410,8 @@ proc main() =
   initMenu()
   initRichPresence()
 
+  resetResultsScreenFade()
+
   while not windowShouldClose():
     updateKeyStates()
     case currentState:
@@ -422,12 +437,35 @@ proc main() =
         
         if songStarted:
           updateMusicStream(currentSong)
-          if songPosition > chartLength and not isRecording:
-            stopMusicStream(currentSong)
-            songStarted = false
-            songPosition = 0.0
-            chartLength = 0.0
-            setState(GameState.Results)
+          if not isRecording and songPosition > chartLength:
+            # stopMusicStream(currentSong)
+            # songStarted = false
+            # songPosition = 0.0
+            # chartLength = 0.0
+            # setState(GameState.Results)
+            if allNotesCompleted(currentChart) and not songFading:
+              songFading = true
+              songFadeStartTime = songPosition
+              echo "song fade out..."
+            
+            # fade out
+            if songFading:
+              let fadeProgress = (songPosition - songFadeStartTime) / songFadeDuration
+              
+              if fadeProgress <= 1.0:
+                let volumeLevel = 1.0 - fadeProgress
+
+                screenFadeAlpha = fadeProgress
+                setMusicVolume(currentSong, float32(volumeLevel))
+              elif songPosition - songFadeStartTime > songFadeDuration + songEndDelay:
+                stopMusicStream(currentSong)
+                resultsScreenFadeIn = true
+                resultsScreenFadeStartTime = 0.0
+                songStarted = false
+                songPosition = 0.0
+                chartLength = 0.0
+                songFading = false
+                setState(GameState.Results)
             
         # if songEnded:
         #   break
@@ -441,6 +479,7 @@ proc main() =
           saveRecordedChart(recordedNotes, currentChart.songPath)
           isRecording = false
           songStarted = false
+          resetResultsScreenFade()
           stopMusicStream(currentSong)
           initMenu() # reset menu state to reload songs list
           setState(GameState.MainMenu)

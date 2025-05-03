@@ -1,6 +1,6 @@
 import raylib
 import discord_rpc
-import std/[math, browsers, options, os]
+import std/[math, browsers, options, os, tables]
 import menuchart, states, chart
 import ui/components
 
@@ -141,34 +141,49 @@ proc initMenu*() =
   createInteractables()
 
 proc handleSongPreview(hoveredIndex: int) =
-  let mousePos = getMousePosition()
+  if previewCooldownTime > 0:
+    previewCooldownTime -= getFrameTime()
   
-  if hoveredIndex >= 0 and hoveredIndex < menuState.charts.len and hoveredIndex != currentPreviewId:
-    if currentPreviewId >= 0:
-      stopMusicStream(previewSong)
-      currentPreviewId = -1
-      previewFadeVolume = 0.0
-
-    let chartPath = menuState.charts[hoveredIndex].path
-    let songFile = "content/music/" & menuState.charts[hoveredIndex].song & ".mp3"
-    
-    if existsPaths.contains(chartPath):
-      previewSong = loadMusicStream(songFile)
-      setMusicVolume(previewSong, 0.0)  # silent for fade-in
-      playMusicStream(previewSong)
-      
-      # good preview point (30 seconds in or 1/3 of song)
-      let totalLength = getMusicTimeLength(previewSong)
-      let previewPoint = min(30.0, totalLength / 3.0)
-      seekMusicStream(previewSong, previewPoint)
-      
-      currentPreviewId = hoveredIndex
-      previewFadeState = fsFadeIn
+  # no switch if cooldown is active
+  if previewCooldownTime > 0:
+    return
+  
+  let hoveredSongPath = if hoveredIndex >= 0 and hoveredIndex < menuState.charts.len: 
+                         menuState.charts[hoveredIndex].song 
+                       else: ""
+  
+  if hoveredSongPath != currentPreviewSong:
+    # cooldown
+    previewCooldownTime = previewCooldownDuration
+    if previewMusicActive and previewMusicCache.hasKey(currentPreviewSong):
+      # fade out
+      previewFadeState = fsFadeOut
       previewFadeTimer = 0.0
+    
+    if hoveredSongPath != "":
+      if not previewMusicCache.hasKey(hoveredSongPath):
+        # Load n cache music
+        let musicPath = "content/music/" & hoveredSongPath & ".mp3"
+        if fileExists(musicPath):
+          previewMusicCache[hoveredSongPath] = loadMusicStream(musicPath)
+          
+          setMusicVolume(previewMusicCache[hoveredSongPath], 0.0)
+          
+          # good preview point (30s in or 1/3 song)
+          let totalLength = getMusicTimeLength(previewMusicCache[hoveredSongPath])
+          let previewPoint = min(30.0, totalLength / 3.0)
+          seekMusicStream(previewMusicCache[hoveredSongPath], previewPoint)
+      
+      if previewMusicCache.hasKey(hoveredSongPath):
+        playMusicStream(previewMusicCache[hoveredSongPath])
+        previewMusicActive = true
+        previewFadeState = fsFadeIn
+        previewFadeTimer = 0.0
+    
+    currentPreviewSong = hoveredSongPath
   
-  # fading
-  if currentPreviewId >= 0:
-    updateMusicStream(previewSong)
+  if previewMusicActive and previewMusicCache.hasKey(currentPreviewSong):
+    updateMusicStream(previewMusicCache[currentPreviewSong])
     previewFadeTimer += getFrameTime()
     
     case previewFadeState:
@@ -181,24 +196,35 @@ proc handleSongPreview(hoveredIndex: int) =
       of fsFadeOut:
         previewFadeVolume = max(0.0, 0.5 - (previewFadeTimer / previewFadeDuration))
         if previewFadeTimer >= previewFadeDuration:
-          stopMusicStream(previewSong)
-          currentPreviewId = -1
+          stopMusicStream(previewMusicCache[currentPreviewSong])
+          previewMusicActive = false
           previewFadeState = fsNone
           previewFadeVolume = 0.0
           
       of fsNone:
         discard
     
-    setMusicVolume(previewSong, previewFadeVolume)
+    if previewMusicActive and previewMusicCache.hasKey(currentPreviewSong):
+      setMusicVolume(previewMusicCache[currentPreviewSong], previewFadeVolume)
+
+
+proc cleanupPreviewCache*() =
+  if previewMusicActive and previewMusicCache.hasKey(currentPreviewSong):
+    stopMusicStream(previewMusicCache[currentPreviewSong])
+    previewMusicActive = false
   
-  if hoveredIndex != currentPreviewId and currentPreviewId >= 0 and previewFadeState != fsFadeOut:
-    previewFadeState = fsFadeOut
-    previewFadeTimer = 0.0
+  previewMusicCache = initTable[string, Music]()
+  currentPreviewSong = ""
 
 proc cleanupMenu*() =
-  if currentPreviewId >= 0:
-    stopMusicStream(previewSong)
-    currentPreviewId = -1
+  if previewMusicActive and previewMusicCache.hasKey(currentPreviewSong):
+    stopMusicStream(previewMusicCache[currentPreviewSong])
+    previewMusicActive = false
+  
+  # Reset preview state
+  previewFadeState = fsNone
+  previewFadeVolume = 0.0
+  currentPreviewSong = ""
 
 proc updateMenu*() =
   let mousePos = getMousePosition()
@@ -251,6 +277,7 @@ proc updateMenu*() =
           if interactable == recordButton:
             isRecording = true
             cleanupMenu()
+            cleanupPreviewCache()
             loadSong(currentConfig.recordingModeSongName)
             setState(GameState.Playing)
             return
