@@ -1,6 +1,6 @@
 import raylib
 import discord_rpc
-import std/[math, browsers, options]
+import std/[math, browsers, options, os]
 import menuchart, states, chart
 import ui/components
 
@@ -21,6 +21,8 @@ type
     selectedChart*: int
     scrollOffset*: float
     interactables*: seq[Interactable]  # Store all UI components
+  MusicFadeState* = enum
+    fsNone, fsFadeIn, fsFadeOut
 
 var menuState*: MenuState
 var minScroll*: float
@@ -40,6 +42,15 @@ var
   recordButton: Interactable
   authorLabel: Interactable
   songListItems: seq[Interactable]
+
+  previewSong: Music
+  currentPreviewId: int = -1
+  previewFadeVolume: float = 0.0
+  previewFadeState: MusicFadeState = fsNone
+  previewFadeTimer: float = 0.0
+  previewFadeDuration: float = 0.85
+
+  existsPaths: seq[string] = @[]
 
 proc createInteractables() =
   menuState.interactables = @[]
@@ -103,6 +114,14 @@ proc initMenu*() =
   menuState.selectedChart = -1
   menuState.scrollOffset = 0
 
+  for chart in menuState.charts:
+    if not existsPaths.contains(chart.path):
+      if fileExists(chart.path):
+        existsPaths.add(chart.path)
+      else:
+        echo "Chart file not found: ", chart.path
+        continue
+
   visibleHeight = getScreenHeight() - TitleSize - TitlePadding - 100
   totalContentHeight = menuState.charts.len * (MenuItemHeight + MenuItemPadding)
   
@@ -112,8 +131,74 @@ proc initMenu*() =
   if not logoLoaded:
     logoTexture = loadTexture("assets/eny/eny.png")
     logoLoaded = true
+  
+  if currentPreviewId >= 0:
+    stopMusicStream(previewSong)
+    currentPreviewId = -1
+    previewFadeVolume = 0.0
+    previewFadeState = fsNone
     
   createInteractables()
+
+proc handleSongPreview(hoveredIndex: int) =
+  let mousePos = getMousePosition()
+  
+  if hoveredIndex >= 0 and hoveredIndex < menuState.charts.len and hoveredIndex != currentPreviewId:
+    if currentPreviewId >= 0:
+      stopMusicStream(previewSong)
+      currentPreviewId = -1
+      previewFadeVolume = 0.0
+
+    let chartPath = menuState.charts[hoveredIndex].path
+    let songFile = "content/music/" & menuState.charts[hoveredIndex].song & ".mp3"
+    
+    if existsPaths.contains(chartPath):
+      previewSong = loadMusicStream(songFile)
+      setMusicVolume(previewSong, 0.0)  # silent for fade-in
+      playMusicStream(previewSong)
+      
+      # good preview point (30 seconds in or 1/3 of song)
+      let totalLength = getMusicTimeLength(previewSong)
+      let previewPoint = min(30.0, totalLength / 3.0)
+      seekMusicStream(previewSong, previewPoint)
+      
+      currentPreviewId = hoveredIndex
+      previewFadeState = fsFadeIn
+      previewFadeTimer = 0.0
+  
+  # fading
+  if currentPreviewId >= 0:
+    updateMusicStream(previewSong)
+    previewFadeTimer += getFrameTime()
+    
+    case previewFadeState:
+      of fsFadeIn:
+        previewFadeVolume = min(0.5, previewFadeTimer / previewFadeDuration)
+        if previewFadeTimer >= previewFadeDuration:
+          previewFadeState = fsNone
+          previewFadeVolume = 0.5
+          
+      of fsFadeOut:
+        previewFadeVolume = max(0.0, 0.5 - (previewFadeTimer / previewFadeDuration))
+        if previewFadeTimer >= previewFadeDuration:
+          stopMusicStream(previewSong)
+          currentPreviewId = -1
+          previewFadeState = fsNone
+          previewFadeVolume = 0.0
+          
+      of fsNone:
+        discard
+    
+    setMusicVolume(previewSong, previewFadeVolume)
+  
+  if hoveredIndex != currentPreviewId and currentPreviewId >= 0 and previewFadeState != fsFadeOut:
+    previewFadeState = fsFadeOut
+    previewFadeTimer = 0.0
+
+proc cleanupMenu*() =
+  if currentPreviewId >= 0:
+    stopMusicStream(previewSong)
+    currentPreviewId = -1
 
 proc updateMenu*() =
   let mousePos = getMousePosition()
@@ -140,6 +225,8 @@ proc updateMenu*() =
   
   menuState.scrollOffset = clamp(menuState.scrollOffset, minScroll, maxScroll)
   
+  var hoveredSongIndex = -1
+
   let listStartY = contentTop
   for i, item in songListItems:
     let yPos = listStartY + (i * (MenuItemHeight + MenuItemPadding)) + menuState.scrollOffset.int
@@ -163,6 +250,7 @@ proc updateMenu*() =
         of ikButton:
           if interactable == recordButton:
             isRecording = true
+            cleanupMenu()
             loadSong(currentConfig.recordingModeSongName)
             setState(GameState.Playing)
             return
@@ -176,6 +264,7 @@ proc updateMenu*() =
           # Song item clicked
           let index = songListItems.find(interactable)
           if index >= 0:
+            cleanupMenu()
             resetGameState()
             currentChart = loadChart(interactable.data)
             currentChart.startTime = -3.0
@@ -191,6 +280,13 @@ proc updateMenu*() =
               )
             )
             return
+    if interactable.kind == ikListItem:
+      if interactable.hovered:
+        let index = songListItems.find(interactable)
+        if index >= 0:
+          hoveredSongIndex = index
+
+  handleSongPreview(hoveredSongIndex)
   
   menuState.selectedChart = -1
   for i, item in songListItems:

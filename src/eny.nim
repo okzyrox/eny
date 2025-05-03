@@ -302,7 +302,7 @@ proc updateRecording(songPosition: float) =
       holdStartTimes[index] = -1.0
 
 proc updateCombo(rating: HitRating) =
-  if rating == hrMiss or rating == hrBad:
+  if rating == hrMiss: #  or rating == hrBad
     # Break combo on bad- hits
     if currentResults.currentCombo > currentResults.maxCombo:
       currentResults.maxCombo = currentResults.currentCombo

@@ -5,11 +5,11 @@ import raylib
 
 const
   # hit thresholds
-  PerfectWindowMs* = 40.0
-  GreatWindowMs* = 65.0
-  GoodWindowMs* = 90.0
-  OkWindowMs* = 120.0
-  BadWindowMs* = 135.0
+  PerfectWindowMs* = 45.0
+  GreatWindowMs* = 60.0
+  GoodWindowMs* = 80.0
+  OkWindowMs* = 100.0
+  BadWindowMs* = 115.0
 
 const
   # hit feedback colors

@@ -152,6 +152,8 @@ proc resetGameState*() =
       note.hit = false
       note.released = false
       note.position = 0.0
+    
+  currentChart = nil
   
   currentResults = GameResults(
     score: 0,
@@ -166,15 +168,21 @@ proc resetGameState*() =
     miss: 0
   )
 
+
+let startX = int32(250)
 proc drawDebugInfo*() =
-  drawText("Debug Info:", 10, getScreenHeight() - 210, 18, Yellow)
-  drawText(fmt"songStarted: {songStarted}", 10, getScreenHeight() - 180, 16, White)
-  drawText(fmt"songEnded: {songEnded}", 10, getScreenHeight() - 160, 16, White)
-  drawText(fmt"chartLength: {chartLength}", 10, getScreenHeight() - 140, 16, White)
-  drawText(fmt"songPosition: {songPosition}", 10, getScreenHeight() - 120, 16, White)
-  drawText(fmt"currentState: {currentState}", 10, getScreenHeight() - 100, 16, White)
-  drawText(fmt"isRecording: {isRecording}", 10, getScreenHeight() - 80, 16, White)
+  drawText("Debug Info:", 10, getScreenHeight() - startX + 30, 18, Yellow)
+  drawText(fmt"songStarted: {songStarted}", 10, getScreenHeight() - startX + 50, 16, White)
+  drawText(fmt"songEnded: {songEnded}", 10, getScreenHeight() - startX + 70, 16, White)
+  drawText(fmt"chartLength: {chartLength}", 10, getScreenHeight() - startX + 90, 16, White)
+  drawText(fmt"songPosition: {songPosition}", 10, getScreenHeight() - startX + 110, 16, White)
+  drawText(fmt"currentState: {currentState}", 10, getScreenHeight() - startX + 130, 16, White)
+  drawText(fmt"isRecording: {isRecording}", 10, getScreenHeight() - startX + 150, 16, White)
   if currentChart != nil:
-    drawText(fmt"currentChart.notes.len: {currentChart.notes.len}", 10, getScreenHeight() - 60, 16, White)
-    drawText(fmt"currentChart.songPath: {currentChart.songPath}", 10, getScreenHeight() - 40, 16, White)
-    drawText(fmt"currentResults: {currentResults}", 10, getScreenHeight() - 20, 16, White)
+    drawText(fmt"currentChart.notes.len: {currentChart.notes.len}", 10, getScreenHeight() - startX + 170, 16, White)
+    drawText(fmt"currentChart.songPath: {currentChart.songPath}", 10, getScreenHeight() - startX + 190, 16, White)
+    drawText(fmt"currentResults: {currentResults}", 10, getScreenHeight() - startX + 210, 16, White)
+    drawText(fmt"playerHitCount (1, 2, 3, 4): {playerHitCount[0]}, {playerHitCount[1]}, {playerHitCount[2]}, {playerHitCount[3]}", 10, getScreenHeight() - startX + 230, 16, White)
+  else:
+    drawText("No chart loaded", 10, getScreenHeight() - startX + 170, 16, White)
+
