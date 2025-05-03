@@ -6,9 +6,7 @@ import std/[json, os]
 
 type
   EnyConfig* = object
-    chartToLoad*: string
     # recording
-    isRecordingMode*: bool
     recordingModeSongName*: string
 
     # play
@@ -19,8 +17,6 @@ type
 
 proc `%`*(config: EnyConfig): JsonNode =
   var jsonObj = newJObject()
-  jsonObj["chartToLoad"] = %config.chartToLoad
-  jsonObj["recordingMode"] = %config.isRecordingMode
   jsonObj["recordingModeSong"] = %config.recordingModeSongName
   jsonObj["scrollSpeed"] = %config.scrollSpeed
   let keybindsNode = newJArray()
@@ -33,10 +29,8 @@ proc loadEnyConfig*(filePath: string): EnyConfig =
   if not fileExists(filePath):
     echo "Config file not found, creating a new one."
     var defaultConfig = EnyConfig(
-      chartToLoad: "recordedtest",
-      isRecordingMode: false,
-      recordingModeSongName: "testsong1",
-      scrollSpeed: 1.5,
+      recordingModeSongName: "princess_of_winter",
+      scrollSpeed: 1.8,
       keybinds: @["D", "F", "J", "K"]
     )
     var jsonObj = %defaultConfig
@@ -47,8 +41,6 @@ proc loadEnyConfig*(filePath: string): EnyConfig =
     let jsonNode = parseJson(jsonContent)
 
     var config = EnyConfig()
-    config.chartToLoad = jsonNode["chartToLoad"].getStr()
-    config.isRecordingMode = jsonNode["recordingMode"].getBool()
     config.recordingModeSongName = jsonNode["recordingModeSong"].getStr()
     config.scrollSpeed = jsonNode["scrollSpeed"].getFloat()
     config.keybinds = @[]

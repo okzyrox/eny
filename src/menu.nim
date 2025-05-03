@@ -2,6 +2,7 @@ import raylib
 import discord_rpc
 import std/[math, browsers, options]
 import menuchart, states, chart
+import ui/components
 
 const
   MenuItemHeight = 100
@@ -19,8 +20,7 @@ type
     charts*: seq[ChartInfo]
     selectedChart*: int
     scrollOffset*: float
-    recordButtonHovered: bool
-    authorCreditsHovered: bool
+    interactables*: seq[Interactable]  # Store all UI components
 
 var menuState*: MenuState
 var minScroll*: float
@@ -36,12 +36,72 @@ var
   logoAlpha = 0.2
   logoScalePulseTime = 0.0
   logoAlphaPulseTime = 0.0
+  
+  recordButton: Interactable
+  authorLabel: Interactable
+  songListItems: seq[Interactable]
+
+proc createInteractables() =
+  menuState.interactables = @[]
+  songListItems = @[]
+  
+  recordButton = newButton(
+    float(getScreenWidth() - RecordButtonWidth - 20),
+    20.0,
+    RecordButtonWidth.float,
+    RecordButtonHeight.float,
+    "Record",
+    Color(r: 200, g: 41, b: 55, a: 180),
+    Color(r: 230, g: 41, b: 55, a: 230),
+    White
+  )
+  menuState.interactables.add(recordButton)
+  
+  authorLabel = newTextLabel(
+    20.0,
+    (getScreenHeight() - 40).float,
+    "by okzyrox!",
+    "by okzyrox!!!",
+    "https://www.github.com/okzyrox",
+    MiscTextColor,
+    AccentColor2,
+    20
+  )
+  menuState.interactables.add(authorLabel)
+  
+  let contentTop = TitleSize + TitlePadding * 2
+  
+  for i, chart in menuState.charts:
+    let yPos = contentTop + (i * (MenuItemHeight + MenuItemPadding)) + menuState.scrollOffset.int
+    let title = if chart.title.len > 0: chart.title else: "Unknown Title"
+    let artist = if chart.artist.len > 0: "Artist: " & chart.artist else: ""
+    let creator = if chart.creator.len > 0: "Charter: " & chart.creator else: ""
+    
+    let listItem = newListItem(
+      (getScreenWidth() - MenuItemWidth) / 2,
+      yPos.float,
+      MenuItemWidth.float,
+      MenuItemHeight.float,
+      title,
+      artist,
+      creator,
+      chart.difficultyName,
+      chart.path,
+      colorAlpha(BackgroundColor, 0.5),
+      colorAlpha(BackgroundColor, 0.8),
+      colorAlpha(BackgroundColor, 0.8),
+      AccentColor2,
+      MiscTextColor,
+      Yellow
+    )
+    
+    menuState.interactables.add(listItem)
+    songListItems.add(listItem)
 
 proc initMenu*() =
   menuState.charts = loadAllChartInfo()
   menuState.selectedChart = -1
   menuState.scrollOffset = 0
-  menuState.recordButtonHovered = false
 
   visibleHeight = getScreenHeight() - TitleSize - TitlePadding - 100
   totalContentHeight = menuState.charts.len * (MenuItemHeight + MenuItemPadding)
@@ -52,46 +112,22 @@ proc initMenu*() =
   if not logoLoaded:
     logoTexture = loadTexture("assets/eny/eny.png")
     logoLoaded = true
-
+    
+  createInteractables()
 
 proc updateMenu*() =
   let mousePos = getMousePosition()
-
-  let recordBtnRect = Rectangle(
-    x: float(getScreenWidth() - RecordButtonWidth - 20), 
-    y: 20, 
-    width: RecordButtonWidth.float, 
-    height: RecordButtonHeight.float
-  )
-
-  let authorCreditsRect = Rectangle(
-    x: 20, 
-    y: (getScreenHeight() - 40).float, 
-    width: measureText("by okzyrox", 20).float,
-    height: 20
-  )
   
-  menuState.recordButtonHovered = checkCollisionPointRec(mousePos, recordBtnRect)
-  menuState.authorCreditsHovered = checkCollisionPointRec(mousePos, authorCreditsRect)
-  
-  if menuState.recordButtonHovered and isMouseButtonReleased(MouseButton.Left):
-    isRecording = true
-    currentConfig.isRecordingMode = true
-    loadSong(currentConfig.recordingModeSongName)
-    setState(GameState.Playing) # temp
-    return
-  
-  if menuState.authorCreditsHovered and isMouseButtonReleased(MouseButton.Left):
-    block: openDefaultBrowser("https://www.github.com/okzyrox")
-
+  # logo animation
   logoScalePulseTime += getFrameTime() * LogoPulseSpeed
   logoAlphaPulseTime += getFrameTime() * (LogoPulseSpeed * 0.7)
   
   logoScale = 0.95 + 0.1 * (sin(logoScalePulseTime) * 0.5 + 0.5)
   logoAlpha = 0.15 + 0.1 * (sin(logoAlphaPulseTime) * 0.5 + 0.5)
   
+  # Update scrolling
   let contentTop = TitleSize + TitlePadding * 2
-  let contentBottom = getScreenHeight() - 60  # Leave space at bottom
+  let contentBottom = getScreenHeight() - 60
   let contentHeight = contentBottom - contentTop
   
   let totalContentHeight = menuState.charts.len * (MenuItemHeight + MenuItemPadding)
@@ -103,47 +139,70 @@ proc updateMenu*() =
     menuState.scrollOffset -= wheel * 40
   
   menuState.scrollOffset = clamp(menuState.scrollOffset, minScroll, maxScroll)
-  menuState.selectedChart = -1
+  
   let listStartY = contentTop
-
-  for i, chart in menuState.charts:
+  for i, item in songListItems:
     let yPos = listStartY + (i * (MenuItemHeight + MenuItemPadding)) + menuState.scrollOffset.int
+    item.bounds.y = yPos.float
     
-    let isVisible = yPos < contentBottom and (yPos + MenuItemHeight) > contentTop
-    
-    if not isVisible:
-      continue
-    
-    let rect = Rectangle(
-      x: (getScreenWidth() - MenuItemWidth) / 2, 
-      y: yPos.float, 
-      width: MenuItemWidth.float, 
-      height: MenuItemHeight.float
-    )
-    
-    if checkCollisionPointRec(mousePos, rect):
+    # scaling effect when hovered
+    if item.hovered:
+      item.bounds.width = MenuItemWidth.float * HighlightScale
+      item.bounds.height = MenuItemHeight.float * HighlightScale
+      item.bounds.x = (getScreenWidth().float32 - item.bounds.width) / 2
+      let heightDiff = (item.bounds.height - MenuItemHeight.float) / 2
+      item.bounds.y -= heightDiff
+    else:
+      item.bounds.width = MenuItemWidth.float
+      item.bounds.height = MenuItemHeight.float
+      item.bounds.x = (getScreenWidth().float32 - item.bounds.width) / 2
+  
+  for i, interactable in menuState.interactables:
+    if interactable.update(mousePos):
+      case interactable.kind:
+        of ikButton:
+          if interactable == recordButton:
+            isRecording = true
+            loadSong(currentConfig.recordingModeSongName)
+            setState(GameState.Playing)
+            return
+            
+        of ikTextLabel:
+          # Author clicked
+          if interactable == authorLabel:
+            openDefaultBrowser(interactable.url)
+            
+        of ikListItem:
+          # Song item clicked
+          let index = songListItems.find(interactable)
+          if index >= 0:
+            resetGameState()
+            currentChart = loadChart(interactable.data)
+            currentChart.startTime = -3.0
+            currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
+            setMusicVolume(currentSong, 0.5)
+            setState(GameState.Playing)
+            discordPresence.setActivity Activity(
+              details: "okzyrox's epic rhythm game",
+              state: "playing " & currentChart.songTitle,
+              assets: some ActivityAssets(
+                largeImage: "eny",
+                largeText: "Playing eny"
+              )
+            )
+            return
+  
+  menuState.selectedChart = -1
+  for i, item in songListItems:
+    if item.hovered:
       menuState.selectedChart = i
-      if isMouseButtonReleased(MouseButton.Left):
-        resetGameState()
-        currentChart = loadChart(menuState.charts[i].path)
-        currentChart.startTime = -3.0
-        currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
-        setMusicVolume(currentSong, 0.5)
-        setState(GameState.Playing)
-        discordPresence.setActivity Activity(
-          details: "okzyrox's epic rhythm game",
-          state: "playing " & currentChart.songTitle,
-          assets: some ActivityAssets(
-            largeImage: "eny",
-            largeText: "Playing eny"
-          )
-        )
-        return
+      break
 
 proc drawMenu*() =
   beginDrawing()
   clearBackground(BackgroundColor2)
-
+  
+  # logo
   if logoLoaded:
     let screenWidth = getScreenWidth()
     let screenHeight = getScreenHeight()
@@ -163,25 +222,10 @@ proc drawMenu*() =
       fade(White, logoAlpha)
     )
   
-  
   let titleText = "Eny"
   let titleWidth = len(titleText) * 20
   drawText(titleText, (getScreenWidth() div 2 - titleWidth div 2).int32, TitlePadding, TitleSize, EnyPink)
-
-  # record btn
-  let recordBtnRect = Rectangle(
-    x: float(getScreenWidth() - RecordButtonWidth - 20), 
-    y: 20, 
-    width: RecordButtonWidth.float, 
-    height: RecordButtonHeight.float
-  )
-  if menuState.recordButtonHovered:
-    drawRectangle(recordBtnRect, Color(r: 230, g: 41, b: 55, a: 230))
-  else:
-    drawRectangle(recordBtnRect, Color(r: 200, g: 41, b: 55, a: 180))
   
-  drawText("Record", recordBtnRect.x.int32 + 20, recordBtnRect.y.int32 + 10, 20, White)
-
   let contentTop = float(TitleSize + TitlePadding * 2)
   let contentBottom = getScreenHeight() - 60 
   let contentHeight = contentBottom - contentTop.int32
@@ -192,12 +236,17 @@ proc drawMenu*() =
     width: MenuItemWidth.float + 40,
     height: contentHeight.float + 20
   )
+  
   drawRectangleRoundedLines(containerRect, 0.05, 10, 2, fade(AccentColor, 0.3))
   
+  # scroll indicators
   let totalContentHeight = menuState.charts.len * (MenuItemHeight + MenuItemPadding)
-  let minScroll = min(0.0, contentHeight.float - totalContentHeight.float)
-  
-  let listStartY = contentTop
+  if totalContentHeight > contentHeight:
+    if menuState.scrollOffset > minScroll:
+      drawText("DOWN", getScreenWidth() div 2 - 10, contentBottom + 10, 30, colorAlpha(White, 0.6))
+    
+    if menuState.scrollOffset < 0:
+      drawText("UP", getScreenWidth() div 2 - 10, (contentTop - 30).int32, 30, colorAlpha(White, 0.6))
   
   beginScissorMode(
     containerRect.x.int32, 
@@ -207,63 +256,20 @@ proc drawMenu*() =
   )
   
   # Draw song list
-  for i, chart in menuState.charts:
-    var yPos = listStartY.int + (i * (MenuItemHeight + MenuItemPadding)) + menuState.scrollOffset.int
+  for i, item in songListItems:
+    let yPos = item.bounds.y
+    let isVisible = yPos < contentBottom.float32 + MenuItemHeight and (yPos + item.bounds.height) > (contentTop - MenuItemHeight)
     
-    let isVisible = yPos < contentBottom + MenuItemHeight and (yPos + MenuItemHeight) > (contentTop - MenuItemHeight).int
-    
-    if not isVisible:
-      continue
-    
-    var width = MenuItemWidth.float
-    var height = MenuItemHeight.float
-    var xPos = (getScreenWidth() - width.int32) / 2
-    
-    if menuState.selectedChart == i:
-      width *= HighlightScale
-      height *= HighlightScale
-      xPos = (getScreenWidth() - width.int32) / 2
-      var temp = (height - MenuItemHeight) / 2
-      yPos -= temp.int32
-    
-    let rect = Rectangle(x: xPos, y: yPos.float, width: width, height: height)
-    
-    if menuState.selectedChart == i:
-      drawRectangleRounded(rect, 0.5, 10, colorAlpha(BackgroundColor, 0.8))
-    else:
-      drawRectangleRounded(rect, 0.5, 10, colorAlpha(BackgroundColor, 0.5))
-    drawRectangleRoundedLines(rect, 0.5, 10, White)
-    
-    let title = if chart.title.len > 0: chart.title else: "Unknown Title"
-    let artist = if chart.artist.len > 0: "Artist: " & chart.artist else: ""
-    let creator = if chart.creator.len > 0: "Charter: " & chart.creator else: ""
-    
-    drawText(title, xPos.int32 + 20, yPos.int32 + 15, 24, AccentColor2)
-    
-    if artist.len > 0:
-      drawText(artist, xPos.int32 + 20, yPos.int32 + 45, 18, MiscTextColor)
-    
-    if creator.len > 0:
-      drawText(creator, xPos.int32 + 20, yPos.int32 + 70, 18, MiscTextColor)
-    
-    if chart.difficultyName.len > 0:
-      let diffText = chart.difficultyName
-      let diffWidth = measureText(diffText, 20)
-      drawText(diffText, xPos.int32 + width.int32 - diffWidth.int32 - 20, yPos.int32 + 15, 20.int32, Yellow)
+    if isVisible:
+      if item.kind == ikListItem:
+        item.selected = menuState.selectedChart == songListItems.find(item)
+      
+      item.draw()
   
   endScissorMode()
   
-  if totalContentHeight > contentHeight:
-    if menuState.scrollOffset > minScroll:
-      drawText("DOWN", getScreenWidth() div 2 - 10, contentBottom + 10, 30, colorAlpha(White, 0.6))
-    
-    if menuState.scrollOffset < 0:
-      drawText("UP", getScreenWidth() div 2 - 10, (contentTop - 30).int32, 30, colorAlpha(White, 0.6))
-  
-  if menuState.authorCreditsHovered:
-    drawText("by okzyrox!!!", 20, getScreenHeight() - 40, 20, AccentColor2)
-  else:
-    drawText("by okzyrox!", 20, getScreenHeight() - 40, 20, MiscTextColor)
+  recordButton.draw()
+  authorLabel.draw()
   
   drawText("v0.1.0", getScreenWidth() - 100, getScreenHeight() - 40, 20, EnyPink)
   drawText("Press ESC to exit", 20, 20, 20, MiscTextColor)

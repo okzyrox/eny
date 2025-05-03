@@ -81,15 +81,24 @@ proc drawRecordingUI(recordedNotes: seq[RecordedNote]) =
   drawText("Press G to save", int32(screenWidth - measureText("Press G to save", 16) - 10), 35, 16, AccentColor)
   drawText(fmt"Total Notes: {recordedNotes.len}", 10, 70, 20, TextColor)
 
-proc drawPlayerStats(playerScore: int) =
-  drawText(fmt"Score: {playerScore}", 10, 70, 20, AccentColor2)
-  let statY = int32(100)
-  let perfectText = "PERFECT: " & $playerScoreData["perfect"]
-  let greatText = "GREAT: " & $playerScoreData["great"]
-  let goodText = "GOOD: " & $playerScoreData["good"]
-  let okText = "OK: " & $playerScoreData["ok"]
-  let badText = "BAD: " & $playerScoreData["bad"]
-  let missText = "MISS: " & $playerScoreData["miss"]
+proc drawPlayerStats() =
+  drawText(fmt"Score: {currentResults.score}", 10, 70, 20, AccentColor2)
+  
+  let comboY = int32(45)
+  if currentResults.currentCombo > 4:  # Only show combo after a certain threshold
+    let comboText = fmt"Combo: {currentResults.currentCombo}"
+    let comboWidth = measureText(comboText, 24)
+    drawText(comboText, (screenWidth - comboWidth) div 2, comboY, 24, White)
+  
+  drawText(fmt"Accuracy: {currentResults.accuracy:.2f}%", 10, 90, 20, AccentColor2)
+  
+  let statY = int32(120)
+  let perfectText = "PERFECT: " & $currentResults.perfect
+  let greatText = "GREAT: " & $currentResults.great 
+  let goodText = "GOOD: " & $currentResults.good
+  let okText = "OK: " & $currentResults.ok
+  let badText = "BAD: " & $currentResults.bad
+  let missText = "MISS: " & $currentResults.miss
   drawText(perfectText, 10, statY, 16, getRatingColor(hrPerfect))
   drawText(greatText, 10, statY + 20, 16, getRatingColor(hrGreat))
   drawText(goodText, 10, statY + 40, 16, getRatingColor(hrGood))
@@ -189,7 +198,7 @@ proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY
         
         if note.isHoldNote:
           let holdEndPosition = int32(note.position - (note.length * chartScrollSpeed))
-          let noteColour = colorFromHSV(float(note.columnIndex * 60), 0.7, 0.9)
+          let noteColour = AccentColor2
           let receptorY32 = int32(receptorY)
           if not note.hit:
             let holdHeight = int32(note.position) - holdEndPosition
@@ -246,7 +255,7 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
     
     # Score breakdown
     if not isRecording:
-      drawPlayerStats(score)
+      drawPlayerStats()
   
   drawReceptors(
     startX, 
@@ -292,6 +301,33 @@ proc updateRecording(songPosition: float) =
       
       holdStartTimes[index] = -1.0
 
+proc updateCombo(rating: HitRating) =
+  if rating == hrMiss or rating == hrBad:
+    # Break combo on bad- hits
+    if currentResults.currentCombo > currentResults.maxCombo:
+      currentResults.maxCombo = currentResults.currentCombo
+    currentResults.currentCombo = 0
+  else:
+    # Increase combo on good+ hits
+    currentResults.currentCombo += 1
+    if currentResults.currentCombo > currentResults.maxCombo:
+      currentResults.maxCombo = currentResults.currentCombo
+  echo currentResults.currentCombo
+  echo currentResults.maxCombo
+  # accuracy
+  let totalNotes = currentResults.perfect + currentResults.great + 
+                  currentResults.good + currentResults.ok + 
+                  currentResults.bad + currentResults.miss
+  
+  if totalNotes > 0:
+    # Weighted accuracy
+    let weightedSum = currentResults.perfect.float * 100.0 + 
+                     currentResults.great.float * 95.0 + 
+                     currentResults.good.float * 75.0 + 
+                     currentResults.ok.float * 50.0 + 
+                     currentResults.bad.float * 25.0
+    currentResults.accuracy = weightedSum / (totalNotes.float * 100.0) * 100.0
+
 proc initRichPresence() =
   let
     applicationId = 1358181398514630958
@@ -326,7 +362,6 @@ proc main() =
 
   # load config & chart
   currentConfig = loadEnyConfig("eny.json")
-  isRecording = currentConfig.isRecordingMode
   if isRecording:
     loadSong(currentConfig.recordingModeSongName)
 
@@ -349,10 +384,6 @@ proc main() =
   let receptorLineHeight = 4
   
   # update vars
-  # var gameTime = 0.0
-  # var songStarted = false
-  # var songEnded = false
-  # var score = 0
   let chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
 
   # update keybinds
@@ -398,13 +429,6 @@ proc main() =
           updateMusicStream(currentSong)
           if songPosition > chartLength and not isRecording:
             stopMusicStream(currentSong)
-            currentResults.score = score
-            currentResults.perfect = playerScoreData["perfect"]
-            currentResults.great = playerScoreData["great"]
-            currentResults.good = playerScoreData["good"]
-            currentResults.ok = playerScoreData["ok"]
-            currentResults.bad = playerScoreData["bad"]
-            currentResults.miss = playerScoreData["miss"]
             songStarted = false
             songPosition = 0.0
             chartLength = 0.0
@@ -444,16 +468,18 @@ proc main() =
                 let timeDiffMs = timeToHit * 1000.0
                 let rating = getHitRating(timeDiffMs)
                 let points = getScorePoints(rating)
-                score += points
+                currentResults.score += points
                 
                 if not note.isHoldNote:
                   case rating:
-                    of hrPerfect: playerScoreData["perfect"] += 1
-                    of hrGreat: playerScoreData["great"] += 1
-                    of hrGood: playerScoreData["good"] += 1
-                    of hrOk: playerScoreData["ok"] += 1
-                    of hrBad: playerScoreData["bad"] += 1
-                    of hrMiss: playerScoreData["miss"] += 1
+                    of hrPerfect: currentResults.perfect += 1
+                    of hrGreat: currentResults.great += 1
+                    of hrGood: currentResults.good += 1
+                    of hrOk: currentResults.ok += 1
+                    of hrBad: currentResults.bad += 1
+                    of hrMiss: currentResults.miss += 1
+                  
+                  updateCombo(rating)
                   
                   recentHits.add(HitFeedback(
                     rating: rating,
@@ -471,15 +497,17 @@ proc main() =
                 let releaseRating = if releaseTimeDiffMs <= -BadWindowMs: hrMiss else: getHitRating(releaseTimeDiffMs)
                 let releasePoints = getScorePoints(releaseRating) div 2
                 
-                score += releasePoints
+                currentResults.score += releasePoints
                 
                 case releaseRating:
-                  of hrPerfect: playerScoreData["perfect"] += 1
-                  of hrGreat: playerScoreData["great"] += 1
-                  of hrGood: playerScoreData["good"] += 1
-                  of hrOk: playerScoreData["ok"] += 1
-                  of hrBad: playerScoreData["bad"] += 1
-                  of hrMiss: playerScoreData["miss"] += 1
+                  of hrPerfect: currentResults.perfect += 1
+                  of hrGreat: currentResults.great += 1
+                  of hrGood: currentResults.good += 1
+                  of hrOk: currentResults.ok += 1
+                  of hrBad: currentResults.bad += 1
+                  of hrMiss: currentResults.miss += 1
+                
+                updateCombo(releaseRating)
                 
                 recentHits.add(HitFeedback(
                   rating: releaseRating,
@@ -490,8 +518,10 @@ proc main() =
               elif timeToHoldEnd < -BadWindowMs / 1000.0:
                 # hold ends naturally
                 note.released = true
-                playerScoreData["perfect"] += 1
-                score += getScorePoints(hrPerfect) div 2
+                currentResults.perfect += 1
+                currentResults.score += getScorePoints(hrPerfect) div 2
+                
+                updateCombo(hrPerfect)
                 
                 recentHits.add(HitFeedback(
                   rating: hrPerfect,
@@ -510,11 +540,6 @@ proc main() =
             if recentHits[i].alpha <= 0:
               recentHits.delete(i)
           
-          # for note in notesToCheck:
-          #   if not note.hit:
-          #     note.hit = true
-          #     playerScoreData["miss"] += 1
-
           ## Hit check: Generic notes
           for note in notesToCheck:
             let timeDiffMs = (note.time - songPosition) * 1000.0
@@ -527,15 +552,17 @@ proc main() =
                 let rating = getHitRating(timeDiffMs)
                 let points = getScorePoints(rating)
                 
-                score += points
+                currentResults.score += points
                 
                 case rating:
-                  of hrPerfect: playerScoreData["perfect"] += 1
-                  of hrGreat: playerScoreData["great"] += 1
-                  of hrGood: playerScoreData["good"] += 1
-                  of hrOk: playerScoreData["ok"] += 1
-                  of hrBad: playerScoreData["bad"] += 1
-                  of hrMiss: playerScoreData["miss"] += 1
+                  of hrPerfect: currentResults.perfect += 1
+                  of hrGreat: currentResults.great += 1
+                  of hrGood: currentResults.good += 1
+                  of hrOk: currentResults.ok += 1
+                  of hrBad: currentResults.bad += 1
+                  of hrMiss: currentResults.miss += 1
+
+                updateCombo(rating)
                 
                 recentHits.add(HitFeedback(
                   rating: rating,
@@ -549,7 +576,9 @@ proc main() =
                 if note.isHoldNote:
                   note.released = true # hold notes are marked as released if missed initially
                 
-                playerScoreData["miss"] += 1
+                currentResults.miss += 1
+
+                updateCombo(hrMiss)
                 
                 recentHits.add(HitFeedback(
                   rating: hrMiss,
@@ -573,16 +602,18 @@ proc main() =
                 let releaseRating = if releaseTimeDiffMs > BadWindowMs: hrMiss else: getHitRating(releaseTimeDiffMs)
                 let releasePoints = getScorePoints(releaseRating) div 2
                 
-                score += releasePoints
+                currentResults.score += releasePoints
                 
                 case releaseRating:
-                  of hrPerfect: playerScoreData["perfect"] += 1
-                  of hrGreat: playerScoreData["great"] += 1
-                  of hrGood: playerScoreData["good"] += 1
-                  of hrOk: playerScoreData["ok"] += 1
-                  of hrBad: playerScoreData["bad"] += 1
-                  of hrMiss: playerScoreData["miss"] += 1
+                  of hrPerfect: currentResults.perfect += 1
+                  of hrGreat: currentResults.great += 1
+                  of hrGood: currentResults.good += 1
+                  of hrOk: currentResults.ok += 1
+                  of hrBad: currentResults.bad += 1
+                  of hrMiss: currentResults.miss += 1
                 
+                updateCombo(releaseRating)
+
                 recentHits.add(HitFeedback(
                   rating: releaseRating,
                   column: note.columnIndex,
@@ -592,9 +623,11 @@ proc main() =
               # hold note finished fully
               elif timeToHoldEnd <= 0:
                 note.released = true
-                playerScoreData["perfect"] += 1
-                score += getScorePoints(hrPerfect) div 2
+                currentResults.perfect += 1
+                currentResults.score += getScorePoints(hrPerfect) div 2
                 
+                updateCombo(hrPerfect)
+
                 recentHits.add(HitFeedback(
                   rating: hrPerfect,
                   column: note.columnIndex,

@@ -28,7 +28,7 @@ proc drawResults*() =
   drawText($currentResults.maxCombo, 400, 250, 30, White)
   
   drawText("Accuracy:", 200, 300, 30, TextColor)
-  drawText(fmt"{accuracy}%", 400, 300, 30, White)
+  drawText(fmt"{currentResults.accuracy:.2f}%", 400, 300, 30, White)
   
   drawText("Perfect:", 200, 350, 30, TextColor)
   drawText($currentResults.perfect, 400, 350, 30, Gold)

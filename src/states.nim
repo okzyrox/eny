@@ -9,6 +9,7 @@ type
 type
   GameResults* = object
     score*: int
+    currentCombo*: int
     maxCombo*: int
     accuracy*: float
     perfect*: int
@@ -17,6 +18,10 @@ type
     ok*: int
     bad*: int
     miss*: int
+
+proc `$`*(results: GameResults): string =
+  return fmt"Score: {results.score}, Max Combo: {results.maxCombo}, Current Combo: {results.currentCombo}, Accuracy: {results.accuracy}, Perfect: {results.perfect}, Great: {results.great}, Good: {results.good}, OK: {results.ok}, Bad: {results.bad}, Miss: {results.miss}"
+
 
 const
   BackgroundColor* = Color(r: 48, g: 25, b: 52, a: 255)
@@ -42,17 +47,7 @@ var songEnded*: bool = false
 var songPosition*: float = 0.0
 var gameTime*: float = 0.0
 var chartLength*: float = 0.0
-var score*: int = 0
 var recentHits*: seq[HitFeedback] = newSeqOfCap[HitFeedback](128)
-
-var playerScoreData*: Table[string, int] = {
-  "perfect": 0,
-  "great": 0,
-  "good": 0,
-  "ok": 0,
-  "bad": 0,
-  "miss": 0
-}.toTable
 
 var playerHitCount*: Table[int, int] = {
   0: 0,
@@ -66,6 +61,13 @@ var holdStartTimes*: Table[int, float] = {
   1: -1.0,
   2: -1.0,
   3: -1.0
+}.toTable
+
+var lastHitNotes: Table[int, float] = {
+  0: -1000.0,
+  1: -1000.0,
+  2: -1000.0,
+  3: -1000.0
 }.toTable
 
 proc loadSong*(filePath: string) =
@@ -138,14 +140,10 @@ proc resetGameState*() =
   songEnded = false
   chartLength = 0.0
   
-  score = 0
-  
-  for key in playerScoreData.keys:
-    playerScoreData[key] = 0
-  
   for i in 0..3:
     playerHitCount[i] = 0
     holdStartTimes[i] = -1.0
+    lastHitNotes[i] = -1000.0
   
   recentHits.setLen(0)
   
@@ -157,6 +155,7 @@ proc resetGameState*() =
   
   currentResults = GameResults(
     score: 0,
+    currentCombo: 0,
     maxCombo: 0,
     accuracy: 0.0,
     perfect: 0,
@@ -168,9 +167,14 @@ proc resetGameState*() =
   )
 
 proc drawDebugInfo*() =
-  drawText("Debug Info:", 10, getScreenHeight() - 150, 18, Yellow)
-  drawText(fmt"songStarted: {songStarted}", 10, getScreenHeight() - 130, 16, White)
-  drawText(fmt"songEnded: {songEnded}", 10, getScreenHeight() - 110, 16, White)
-  drawText(fmt"chartLength: {chartLength}", 10, getScreenHeight() - 90, 16, White)
-  drawText(fmt"songPosition: {songPosition}", 10, getScreenHeight() - 70, 16, White)
-  drawText(fmt"currentState: {currentState}", 10, getScreenHeight() - 50, 16, White)
+  drawText("Debug Info:", 10, getScreenHeight() - 210, 18, Yellow)
+  drawText(fmt"songStarted: {songStarted}", 10, getScreenHeight() - 180, 16, White)
+  drawText(fmt"songEnded: {songEnded}", 10, getScreenHeight() - 160, 16, White)
+  drawText(fmt"chartLength: {chartLength}", 10, getScreenHeight() - 140, 16, White)
+  drawText(fmt"songPosition: {songPosition}", 10, getScreenHeight() - 120, 16, White)
+  drawText(fmt"currentState: {currentState}", 10, getScreenHeight() - 100, 16, White)
+  drawText(fmt"isRecording: {isRecording}", 10, getScreenHeight() - 80, 16, White)
+  if currentChart != nil:
+    drawText(fmt"currentChart.notes.len: {currentChart.notes.len}", 10, getScreenHeight() - 60, 16, White)
+    drawText(fmt"currentChart.songPath: {currentChart.songPath}", 10, getScreenHeight() - 40, 16, White)
+    drawText(fmt"currentResults: {currentResults}", 10, getScreenHeight() - 20, 16, White)
