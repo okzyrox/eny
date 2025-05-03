@@ -18,12 +18,12 @@ jobs:
         id: git_short_hash
         run: echo "result=$(git rev-parse --short "${{ github.sha }}")" >> $GITHUB_OUTPUT
         shell: bash
-      - uses: jiro4989/setup-nim-action@v1
+      - uses: jiro4989/setup-nim-action@v2
         with:
-          nim-version: '2.2.2' # ex: 1.0.x, 1.2.x, 1.4.x ...
+          nim-version: '2.2.2'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Packages
-        run: nimble install -Y
+        run: nimble install -Y -d
 
       - name: Build for Windows
         run: nimble build
@@ -31,7 +31,7 @@ jobs:
       - name: Set resources on files with rcedit
         uses: Bioblaze/rcedit-action@main
         with:
-          directory-path: './dist'
+          directory-path: './'
           file-types: 'exe'
           set-icon: 'true'
           exe-file-name: 'eny.exe'
