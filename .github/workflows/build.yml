@@ -29,14 +29,14 @@ jobs:
         run: nimble build
       
       - name: Set resources on files with rcedit
-      - uses: Bioblaze/rcedit-action@v1
+        uses: Bioblaze/rcedit-action@main
         with:
           directory-path: './dist'
           file-types: 'exe'
           set-icon: 'true'
           exe-file-name: 'eny.exe'
           ico-file-path: './assets/eny/eny.ico'
-          file-version: '0.1.0''
+          file-version: '0.1.0'
   
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
