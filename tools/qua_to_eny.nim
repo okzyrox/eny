@@ -85,6 +85,23 @@ proc parseQuaFile(filePath: string): tuple[metadata: Table[string, string], note
   
   return (metadata: metadata, notes: notes)
 
+const InvalidChars = {'\\', '/', '*', '?', '\"', '<', '>', '|', '\''}
+const ReplaceChars = {' ', '-', '_', '.', ':'}
+proc sanitiseString(input: string): string =
+
+  result = ""
+  for c in input:
+    if c notin InvalidChars and ord(c) >= 32:
+      if c in ReplaceChars:
+        result.add('_')
+      else:
+        result.add(c)
+  
+  result = result.strip()
+  let lastChar = result[result.len - 1]
+  if lastChar == '_':
+    result = result[0 ..< result.len - 1]
+
 proc convertQuaverToEny(filePath: string) =
   echo "Converting Quaver file: ", filePath
   
@@ -98,10 +115,10 @@ proc convertQuaverToEny(filePath: string) =
   echo fmt"  Title: {title}"
   echo fmt"  Total notes: {quaverNotes.len}"
   
-  let outputFilename = title.toLower().replace(" ", "_") & ".json"
+  let outputFilename = sanitiseString(title.toLower()) & ".json"
   echo "Output file will be: ", outputFilename
   
-  let songName = title.toLower().replace(" ", "_")
+  let songName = sanitiseString(title.toLower())
   
   var notes: seq[NoteData] = @[]
   

@@ -20,6 +20,9 @@ eny.json
 
 QuaToEnyConverter/**
 tools/out/**
+tools/QuaToEnyConverter/**
+*.mp3
+!content/music/**
 
 # testing
 
