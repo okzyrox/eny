@@ -280,9 +280,6 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
     if not isRecording:
       drawPlayerStats(int32(titleX))
   
-  # hit rating
-  drawHitRatings(startX, noteSpacing, receptorY)
-  
   # Notes
   drawReceptors(
     startX, 
@@ -293,6 +290,9 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
     receptorLineHeight, 
     noteTextY
   )
+
+  # hit rating
+  drawHitRatings(startX, noteSpacing, receptorY)
 
   # Countdown
   if songPosition < 0:
