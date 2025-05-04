@@ -91,30 +91,37 @@ proc drawRecordingUI(recordedNotes: seq[RecordedNote]) =
   drawText("Press G to save", int32(screenWidth - measureText("Press G to save", 16) - 10), 35, 16, AccentColor)
   drawText(fmt"Total Notes: {recordedNotes.len}", 10, 70, 20, TextColor)
 
-proc drawPlayerStats() =
-  drawText(fmt"Score: {currentResults.score}", 10, 70, 20, AccentColor2)
+proc drawPlayerStats(titleX: int32) =
+  let comboText = fmt"Combo: {currentResults.currentCombo}"
+  let comboWidth = measureText(comboText, 20)
+  let maxComboText = fmt"(MAX: {currentResults.maxCombo})"
+  drawText(comboText, int32(titleX), 130, 20, White)
+  drawText(maxComboText, int32(titleX + comboWidth + 10), 130, 20, EnyPink)
   
-  let comboY = int32(45)
-  if currentResults.currentCombo > 4:  # Only show combo after a certain threshold
-    let comboText = fmt"Combo: {currentResults.currentCombo}"
-    let comboWidth = measureText(comboText, 24)
-    drawText(comboText, (screenWidth - comboWidth) div 2, comboY, 24, White)
+
+  let endTime = chartLength - songPosition
   
-  drawText(fmt"Accuracy: {currentResults.accuracy:.2f}%", 10, 90, 20, AccentColor2)
+  if endTime > 0:
+    let timeText = fmt"Time: {songPosition:.2f}s"
+    let timeWidth = measureText(timeText, 20)
+    drawText(timeText, int32(titleX), 160, 20, TextColor)
+    drawText(fmt"(End: {endTime:.2f}s)", int32(titleX + timeWidth + 15), 160, 20, MiscTextColor)
+  drawText(fmt"Score: {currentResults.score}", titleX, 190, 20, AccentColor2)
+  drawText(fmt"Accuracy: {currentResults.accuracy:.2f}%", titleX, 220, 20, AccentColor2)
   
-  let statY = int32(120)
+  let statY = int32(240)
   let perfectText = "PERFECT: " & $currentResults.perfect
   let greatText = "GREAT: " & $currentResults.great 
   let goodText = "GOOD: " & $currentResults.good
   let okText = "OK: " & $currentResults.ok
   let badText = "BAD: " & $currentResults.bad
   let missText = "MISS: " & $currentResults.miss
-  drawText(perfectText, 10, statY, 16, getRatingColor(hrPerfect))
-  drawText(greatText, 10, statY + 20, 16, getRatingColor(hrGreat))
-  drawText(goodText, 10, statY + 40, 16, getRatingColor(hrGood))
-  drawText(okText, 10, statY + 60, 16, getRatingColor(hrOk))
-  drawText(badText, 10, statY + 80, 16, getRatingColor(hrBad))
-  drawText(missText, 10, statY + 100, 16, getRatingColor(hrMiss))
+  drawText(perfectText, titleX, statY, 16, getRatingColor(hrPerfect))
+  drawText(greatText, titleX, statY + 20, 16, getRatingColor(hrGreat))
+  drawText(goodText, titleX, statY + 40, 16, getRatingColor(hrGood))
+  drawText(okText, titleX, statY + 60, 16, getRatingColor(hrOk))
+  drawText(badText, titleX, statY + 80, 16, getRatingColor(hrBad))
+  drawText(missText, titleX, statY + 100, 16, getRatingColor(hrMiss))
 
 proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacing: int, receptorLineY: int, receptorLineHeight: int, noteTextY: int) =
   let receptorLineY32 = int32(receptorLineY)
@@ -122,6 +129,20 @@ proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacin
   let receptorLineHeight32 = int32(receptorLineHeight)
   let startX32 = int32(startX)
   let totalNotesWidth32 = int32(totalNotesWidth)
+
+  let bgPadding = 20
+  let bgRect = Rectangle(
+    x: float(startX32 - 20),
+    y: float(0),
+    width: float(totalNotesWidth32 + 40),
+    height: float(screenHeight)
+  )
+  drawRectangleRounded(
+    bgRect,
+    0.15,
+    10,
+    fade(BackgroundColor3, 0.7)
+  )
 
   let halfScale = int32(SpriteUpscale / 2)
   let quarterScale = int32(SpriteUpscale / 4)
@@ -245,26 +266,24 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
   
   let songTitle = currentChart.songTitle
   let titleWidth = measureText(songTitle, 24)
-  let titleX = int32((screenWidth - titleWidth) div 2)
-  drawText(songTitle, titleX, 20, 24, AccentColor2)
+  let titleX = int32((screenWidth - titleWidth) div 2) + 24
+  let noteAreaEndX = startX + totalNotesWidth
   
   # Record UI
   if isRecording:
     drawRecordingUI(recordedNotes)
   
-  # Countdown
-  if songPosition < 0:
-    let countdownText = $(-int(songPosition) + 1)
-    let textWidth = measureText(countdownText, 40)
-    let countdownX = int32((screenWidth - textWidth) div 2)
-    drawText(countdownText, countdownX, 100, 40, AccentColor)
-  else:
-    # stats
-    drawText(fmt"Time: {songPosition:.2f}s", 10, 40, 20, TextColor)
+  if songPosition >= 0:
+    let titleX = noteAreaEndX + 20
+    drawText(songTitle, int32(titleX), 100, 24, AccentColor2)
     
-    # Score breakdown
     if not isRecording:
-      drawPlayerStats()
+      drawPlayerStats(int32(titleX))
+  
+  # hit rating
+  drawHitRatings(startX, noteSpacing, receptorY)
+  
+  # Notes
   drawReceptors(
     startX, 
     receptorY, 
@@ -274,9 +293,14 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
     receptorLineHeight, 
     noteTextY
   )
-  
-  # hit rating
-  drawHitRatings(startX, noteSpacing, receptorY)
+
+  # Countdown
+  if songPosition < 0:
+    drawText(songTitle, titleX, 20, 24, AccentColor2)
+    let countdownText = $(-int(songPosition) + 1)
+    let textWidth = measureText(countdownText, 40)
+    let countdownX = int32((screenWidth - textWidth) div 2)
+    drawText(countdownText, countdownX, 100, 40, AccentColor)
   
   # Fallin notes
   if not isRecording:

@@ -1,5 +1,5 @@
 import raylib
-from ../states import TitleSize, TitlePadding
+from ../states import TitleSize, TitlePadding, LongTitleLength
 
 type
   InteractableKind* = enum
@@ -136,9 +136,10 @@ proc draw*(self: Interactable) =
       
       drawRectangleRounded(self.bounds, 0.5, 10, bgColor)
       drawRectangleRoundedLines(self.bounds, 0.5, 10, White)
-      
+
+      let visibleWidth = self.bounds.width - 40  # 20px padding
+      let trimmedTitle = if self.title.len >= LongTitleLength: self.title.substr(0, LongTitleLength-1) & "..." else: self.title
       if self.isLongTitle and self.hovered:
-        let visibleWidth = self.bounds.width - 40  # 20px padding
         
         let titleWidth = float(measureText(self.title, self.titleSize))
         
@@ -186,7 +187,7 @@ proc draw*(self: Interactable) =
                   self.listItemTextColor)
       else:
         # title without scrolling
-        drawText(self.title, 
+        drawText(trimmedTitle, 
                 (self.bounds.x + 20).int32, 
                 (self.bounds.y + 15).int32, 
                 self.titleSize, 
@@ -210,6 +211,6 @@ proc draw*(self: Interactable) =
         let rightTextWidth = measureText(self.rightText, self.rightTextSize)
         drawText(self.rightText, 
                 (self.bounds.x + self.bounds.width - rightTextWidth.float - 20).int32, 
-                (self.bounds.y + 15).int32, 
+                (self.bounds.y + 70).int32, 
                 self.rightTextSize, 
                 self.rightTextColor)

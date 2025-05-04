@@ -23,8 +23,8 @@ proc loadChartInfo*(filePath: string): ChartInfo =
       result.artist = extra["artist"].getStr("")
     if extra.hasKey("creator"):
       result.creator = extra["creator"].getStr("")
-    if extra.hasKey("difficultyName"):
-      result.difficultyName = extra["difficultyName"].getStr("")
+    if extra.hasKey("difficulty"):
+      result.difficultyName = extra["difficulty"].getStr("")
 
 proc loadAllChartInfo*(): seq[ChartInfo] =
   result = @[]

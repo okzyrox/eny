@@ -37,6 +37,7 @@ const
   # menu/ui
   TitleSize* = 60
   TitlePadding* = 50
+  LongTitleLength* = 40 # todo: make dynamic of screenwidth
 
   # discord presence
   PresenceAppID* = 1358181398514630958
@@ -158,15 +159,17 @@ proc updateResultsPresence*() =
   # final score info
   let scoreText = fmt"Score: {currentResults.score} • {currentResults.accuracy:.2f}%"
   let comboText = fmt"Max Combo: {currentResults.maxCombo}x"
-  
-  discordPresence.setActivity Activity(
-    details: "eny - Results",
-    state: scoreText,
-    assets: some ActivityAssets(
-      largeImage: "eny",
-      largeText: comboText
+  try:
+    discordPresence.setActivity Activity(
+      details: "eny - Results",
+      state: scoreText,
+      assets: some ActivityAssets(
+        largeImage: "eny",
+        largeText: comboText
+      )
     )
-  )
+  except Exception as e:
+    echo "Error setting Discord activity: ", e.msg
 
 proc setState*(state: GameState) =
   currentState = state
@@ -174,36 +177,45 @@ proc setState*(state: GameState) =
     of MainMenu:
       activityStartTime = 0
       activityEndTime = 0
-      discordPresence.setActivity Activity(
-        details: "eny - On the menu",
-        state: "Browsing charts",
-        assets: some ActivityAssets(
-          largeImage: "eny",
-          largeText: "Playing eny"
+      try:
+        discordPresence.setActivity Activity(
+          details: "eny - On the menu",
+          state: "Browsing charts",
+          assets: some ActivityAssets(
+            largeImage: "eny",
+            largeText: "Playing eny"
+          )
         )
-      )
+      except Exception as e:
+        echo "Error setting Discord activity: ", e.msg
     of Playing:
-      discordPresence.setActivity Activity(
-        details: "eny - Loading song...",
-        state: "Getting ready to play",
-        assets: some ActivityAssets(
-          largeImage: "eny",
-          largeText: "Playing eny"
+      try:
+        discordPresence.setActivity Activity(
+          details: "eny - Loading song...",
+          state: "Getting ready to play",
+          assets: some ActivityAssets(
+            largeImage: "eny",
+            largeText: "Playing eny"
+          )
         )
-      )
+      except Exception as e:
+        echo "Error setting Discord activity: ", e.msg
     of Results:
       activityStartTime = 0
       activityEndTime = 0
       updateResultsPresence()
     of Recording:
-      discordPresence.setActivity Activity(
-        details: "eny - Recording a chart",
-        state: "Recording notes...",
-        assets: some ActivityAssets(
-          largeImage: "eny",
-          largeText: "Playing eny"
+      try:
+        discordPresence.setActivity Activity(
+          details: "eny - Recording a chart",
+          state: "Recording notes...",
+          assets: some ActivityAssets(
+            largeImage: "eny",
+            largeText: "Playing eny"
+          )
         )
-      )
+      except Exception as e:
+        echo "Error setting Discord activity: ", e.msg
 
 proc resetGameState*() =
   gameTime = 0.0

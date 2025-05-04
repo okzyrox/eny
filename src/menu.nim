@@ -50,8 +50,6 @@ var
 
   existsPaths: seq[string] = @[]
 
-const LongTitleLength = 45 # todo: make dynamic of screenwidth
-
 proc createInteractables() =
   menuState.interactables = @[]
   songListItems = @[]
@@ -103,7 +101,7 @@ proc createInteractables() =
       colorAlpha(BackgroundColor, 0.8),
       AccentColor2,
       MiscTextColor,
-      Yellow
+      TextColor
     )
 
     if title.len > LongTitleLength:
@@ -379,7 +377,7 @@ proc drawMenu*() =
     width: MenuItemWidth.float + 40,
     height: contentHeight.float + 20
   )
-  
+
   drawRectangleRoundedLines(containerRect, 0.05, 10, 2, fade(AccentColor, 0.3))
   
   # scroll indicators

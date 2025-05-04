@@ -86,14 +86,15 @@ proc parseQuaFile(filePath: string): tuple[metadata: Table[string, string], note
   return (metadata: metadata, notes: notes)
 
 const InvalidChars = {'\\', '/', '*', '?', '\"', '<', '>', '|', '\''}
-const ReplaceChars = {' ', '-', '_', '.', ':'}
+const ReplaceChars = {' ', '-', '_', '.', ':', '[', ']', '(', ')', '{', '}', '`', '~', ','}
 proc sanitiseString(input: string): string =
 
   result = ""
   for c in input:
     if c notin InvalidChars and ord(c) >= 32:
       if c in ReplaceChars:
-        result.add('_')
+        if result.len > 0 and result[result.len - 1] != '_':
+          result.add('_')
       else:
         result.add(c)
   
