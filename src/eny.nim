@@ -339,22 +339,18 @@ proc updateCombo(rating: HitRating) =
     currentResults.accuracy = weightedSum / (totalNotes.float * 100.0) * 100.0
 
 proc initRichPresence() =
-  let
-    applicationId = 1358181398514630958
-  
-  discordPresence = newDiscordRPC(applicationId)
+  discordPresence = newDiscordRPC(PresenceAppID)
 
   try:
     discard discordPresence.connect
-
     discordPresence.setActivity Activity(
-      details: "okzyrox's epic rhythm game",
-      state: "on the main menu",
-      assets: some ActivityAssets(
-        largeImage: "eny",
-        largeText: "Playing eny"
+        details: "eny - On the menu",
+        state: "Browsing charts",
+        assets: some ActivityAssets(
+          largeImage: "eny",
+          largeText: "Playing eny"
+        )
       )
-    )
   except Exception as e:
     echo "Failed to connect to Discord RPC: ", e.msg
 
@@ -414,10 +410,17 @@ proc main() =
 
   while not windowShouldClose():
     updateKeyStates()
+    if isKeyPressed(KeyboardKey.P):
+      debugInfoShown = not debugInfoShown
     case currentState:
       of GameState.Playing:
         let deltaTime = getFrameTime()
         gameTime += deltaTime
+
+        lastPresenceUpdateTime += deltaTime
+        if lastPresenceUpdateTime >= PresenceUpdateInterval:
+          lastPresenceUpdateTime = 0.0
+          updatePlayingPresence()
         
         # echo fmt"Game Time: {gameTime:.2f}"
         if currentChart == nil:

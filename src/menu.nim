@@ -9,8 +9,6 @@ const
   MenuItemWidth = 600
   MenuItemPadding = 20
   HighlightScale = 1.05
-  TitleSize = 60
-  TitlePadding = 50
   LogoPulseSpeed = 0.8
   RecordButtonWidth = 160
   RecordButtonHeight = 40
@@ -51,6 +49,8 @@ var
   previewFadeDuration: float = 0.85
 
   existsPaths: seq[string] = @[]
+
+const LongTitleLength = 45 # todo: make dynamic of screenwidth
 
 proc createInteractables() =
   menuState.interactables = @[]
@@ -105,6 +105,9 @@ proc createInteractables() =
       MiscTextColor,
       Yellow
     )
+
+    if title.len > LongTitleLength:
+      listItem.isLongTitle = true
     
     menuState.interactables.add(listItem)
     songListItems.add(listItem)
@@ -144,19 +147,18 @@ proc handleSongPreview(hoveredIndex: int) =
   if previewCooldownTime > 0:
     previewCooldownTime -= getFrameTime()
   
-  # no switch if cooldown is active
-  if previewCooldownTime > 0:
-    return
-  
   let hoveredSongPath = if hoveredIndex >= 0 and hoveredIndex < menuState.charts.len: 
                          menuState.charts[hoveredIndex].song 
                        else: ""
   
-  if hoveredSongPath != currentPreviewSong:
-    # cooldown
+  if hoveredSongPath == "" and currentPreviewSong != "" and previewMusicActive:
+    if previewFadeState != fsFadeOut:
+      previewFadeState = fsFadeOut
+      previewFadeTimer = 0.0
+  
+  elif previewCooldownTime <= 0 and hoveredSongPath != currentPreviewSong:
     previewCooldownTime = previewCooldownDuration
     if previewMusicActive and previewMusicCache.hasKey(currentPreviewSong):
-      # fade out
       previewFadeState = fsFadeOut
       previewFadeTimer = 0.0
     
@@ -201,12 +203,14 @@ proc handleSongPreview(hoveredIndex: int) =
           previewFadeState = fsNone
           previewFadeVolume = 0.0
           
+          if hoveredSongPath == "":
+            currentPreviewSong = ""
+          
       of fsNone:
         discard
     
     if previewMusicActive and previewMusicCache.hasKey(currentPreviewSong):
       setMusicVolume(previewMusicCache[currentPreviewSong], previewFadeVolume)
-
 
 proc cleanupPreviewCache*() =
   if previewMusicActive and previewMusicCache.hasKey(currentPreviewSong):
@@ -269,6 +273,30 @@ proc updateMenu*() =
       item.bounds.width = MenuItemWidth.float
       item.bounds.height = MenuItemHeight.float
       item.bounds.x = (getScreenWidth().float32 - item.bounds.width) / 2
+    
+    if item.isLongTitle:
+      if item.hovered:
+        let titleWidth = measureText(item.title, item.titleSize)
+        let visibleWidth = int32(item.bounds.width - 40)  # 20px padding on each side
+        
+        if titleWidth > visibleWidth:
+          if item.titleScrollPause > 0:
+            item.titleScrollPause -= getFrameTime()
+          else:
+            item.titleScrollPos += item.titleScrollSpeed * float(item.titleScrollDir) * getFrameTime()
+            
+            # reverse if needed
+            if item.titleScrollDir > 0 and int32(item.titleScrollPos) >= (titleWidth - visibleWidth + 20):
+              item.titleScrollDir = -1  # scroll back
+              item.titleScrollPause = 0.8
+            elif item.titleScrollDir < 0 and item.titleScrollPos <= 0:
+              item.titleScrollDir = 1
+              item.titleScrollPause = 0.8
+      else:
+        # Reset scroll
+        item.titleScrollPos = 0
+        item.titleScrollDir = 1
+        item.titleScrollPause = 0
   
   for i, interactable in menuState.interactables:
     if interactable.update(mousePos):
@@ -299,14 +327,6 @@ proc updateMenu*() =
             currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
             setMusicVolume(currentSong, 0.5)
             setState(GameState.Playing)
-            discordPresence.setActivity Activity(
-              details: "okzyrox's epic rhythm game",
-              state: "playing " & currentChart.songTitle,
-              assets: some ActivityAssets(
-                largeImage: "eny",
-                largeText: "Playing eny"
-              )
-            )
             return
     if interactable.kind == ikListItem:
       if interactable.hovered:

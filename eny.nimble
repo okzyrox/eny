@@ -12,4 +12,4 @@ bin           = @["eny"]
 requires "nim >= 2.2.2"
 
 requires "naylib >= 25.13.0"
-requires "https://github.com/okzyrox/discord_rpc >= 0.2.1"
+requires "https://github.com/okzyrox/discord_rpc >= 0.2.2"

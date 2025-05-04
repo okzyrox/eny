@@ -1,7 +1,7 @@
 import chart, config, hit_rating
 import raylib 
 import discord_rpc
-import std/[os, options, tables, strformat]
+import std/[os, options, tables, strformat, times]
 type
   GameState* = enum
     MainMenu, Playing, Results, Recording
@@ -34,18 +34,28 @@ const
   MiscTextColor* = Color(r: 150, g: 150, b: 150, a: 255)
   EnyPink* = Color(r: 229, g: 88, b: 170 , a: 255)
 
+  # menu/ui
+  TitleSize* = 60
+  TitlePadding* = 50
+
+  # discord presence
+  PresenceAppID* = 1358181398514630958
+  PresenceUpdateInterval* = 2.5
+
 var currentState*: GameState = MainMenu
 var currentChart*: Chart
 var currentConfig*: EnyConfig
 var currentSong*: Music
 var currentResults*: GameResults
 var discordPresence*: DiscordRPC
+var lastPresenceUpdateTime*: float = 0.0
+var debugInfoShown*: bool = false
 var isRecording*: bool = false
 var songStarted*: bool = false
 var songPaused*: bool = false
 var songEnded*: bool = false
 var songFading*: bool = false
-var songFadeStartTIme*: float = 0.0
+var songFadeStartTime*: float = 0.0
 var songFadeDuration*: float = 3.5
 var songEndDelay*: float = 0.0
 var songPosition*: float = 0.0
@@ -109,13 +119,64 @@ proc loadSong*(filePath: string) =
     # currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
     # setMusicVolume(currentSong, 0.5)
 
+var activityStartTime*: int64 = 0
+var activityEndTime*: int64 = 0
+proc updatePlayingPresence*() =
+  if currentChart == nil:
+    return
+    
+  let songName = if currentChart.songTitle.len > 0: currentChart.songTitle else: currentChart.songPath
+  
+  # accuracy and combo
+  let accuracyText = fmt"{currentResults.accuracy:.2f}% • {currentResults.currentCombo}x"
+  if activityStartTime == 0:
+    activityStartTime = times.getTime().toUnix()
+  if activityEndTime == 0:
+    activityEndTime = activityStartTime + int64(chartLength)
+
+  # progress bar info
+  var timestamps = ActivityTimestamps(
+    start: activityStartTime,
+    finish: activityEndTime
+  )
+  
+  discordPresence.setActivity Activity(
+    details: "eny - Playing",
+    state: accuracyText,
+    timestamps: timestamps,
+    activityType: some ActivityKind.Listening,
+    assets: some ActivityAssets(
+      largeImage: "eny",
+      largeText: fmt"Playing {songName}"
+    )
+  )
+
+proc updateResultsPresence*() =
+  if currentChart == nil:
+    return
+  
+  # final score info
+  let scoreText = fmt"Score: {currentResults.score} • {currentResults.accuracy:.2f}%"
+  let comboText = fmt"Max Combo: {currentResults.maxCombo}x"
+  
+  discordPresence.setActivity Activity(
+    details: "eny - Results",
+    state: scoreText,
+    assets: some ActivityAssets(
+      largeImage: "eny",
+      largeText: comboText
+    )
+  )
+
 proc setState*(state: GameState) =
   currentState = state
   case state:
     of MainMenu:
+      activityStartTime = 0
+      activityEndTime = 0
       discordPresence.setActivity Activity(
-        details: "okzyrox's epic rhythm game",
-        state: "on the main menu",
+        details: "eny - On the menu",
+        state: "Browsing charts",
         assets: some ActivityAssets(
           largeImage: "eny",
           largeText: "Playing eny"
@@ -123,26 +184,21 @@ proc setState*(state: GameState) =
       )
     of Playing:
       discordPresence.setActivity Activity(
-        details: "okzyrox's epic rhythm game",
-        state: "playing a song",
+        details: "eny - Loading song...",
+        state: "Getting ready to play",
         assets: some ActivityAssets(
           largeImage: "eny",
           largeText: "Playing eny"
         )
       )
     of Results:
-      discordPresence.setActivity Activity(
-        details: "okzyrox's epic rhythm game",
-        state: "on the results screen",
-        assets: some ActivityAssets(
-          largeImage: "eny",
-          largeText: "Playing eny"
-        )
-      )
+      activityStartTime = 0
+      activityEndTime = 0
+      updateResultsPresence()
     of Recording:
       discordPresence.setActivity Activity(
-        details: "okzyrox's epic rhythm game",
-        state: "recording a chart",
+        details: "eny - Recording a chart",
+        state: "Recording notes...",
         assets: some ActivityAssets(
           largeImage: "eny",
           largeText: "Playing eny"
@@ -190,23 +246,28 @@ proc resetResultsScreenFade*() =
   screenFadeAlpha = 0.0
   resultsScreenFadeIn = false
 
-let startX = int32(250)
+let startY = int32(260)
 proc drawDebugInfo*() =
-  drawText("Debug Info:", 10, getScreenHeight() - startX + 10, 18, Yellow)
-  drawFPS(10, getScreenHeight() - startX + 30)
-  drawText(fmt"songStarted: {songStarted}", 10, getScreenHeight() - startX + 50, 16, White)
-  drawText(fmt"songEnded: {songEnded}", 10, getScreenHeight() - startX + 70, 16, White)
-  drawText(fmt"chartLength: {chartLength}", 10, getScreenHeight() - startX + 90, 16, White)
-  drawText(fmt"songPosition: {songPosition}", 10, getScreenHeight() - startX + 110, 16, White)
-  drawText(fmt"currentState: {currentState}", 10, getScreenHeight() - startX + 130, 16, White)
-  drawText(fmt"isRecording: {isRecording}", 10, getScreenHeight() - startX + 150, 16, White)
-  if currentChart != nil:
-    drawText(fmt"currentChart.notes.len: {currentChart.notes.len}", 10, getScreenHeight() - startX + 170, 16, White)
-    drawText(fmt"currentChart.songPath: {currentChart.songPath}", 10, getScreenHeight() - startX + 190, 16, White)
-    drawText(fmt"currentResults: {currentResults}", 10, getScreenHeight() - startX + 210, 16, White)
-    drawText(fmt"playerHitCount (1, 2, 3, 4): {playerHitCount[0]}, {playerHitCount[1]}, {playerHitCount[2]}, {playerHitCount[3]}", 10, getScreenHeight() - startX + 230, 16, White)
+  let toggleTextPosition = if not debugInfoShown: getScreenHeight() - startY + 10 else: getScreenHeight() - startY - 20
+  drawText("Press `P` to toggle debug info", 10, toggleTextPosition, 18, MiscTextColor)
+  if not debugInfoShown:
+    return
   else:
-    if currentState == MainMenu:
-      drawText(fmt"cachedPreviewLength: {previewMusicCache.len}", 10, getScreenHeight() - startX + 170, 16, White)
-      drawText(fmt"currentPreviewSong: {currentPreviewSong}", 10, getScreenHeight() - startX + 190, 16, White)
+    drawText("Debug Info:", 10, getScreenHeight() - startY + 10, 18, Yellow)
+    drawFPS(10, getScreenHeight() - startY + 30)
+    drawText(fmt"songStarted: {songStarted}", 10, getScreenHeight() - startY + 50, 16, White)
+    drawText(fmt"songEnded: {songEnded}", 10, getScreenHeight() - startY + 70, 16, White)
+    drawText(fmt"chartLength: {chartLength}", 10, getScreenHeight() - startY + 90, 16, White)
+    drawText(fmt"songPosition: {songPosition}", 10, getScreenHeight() - startY + 110, 16, White)
+    drawText(fmt"currentState: {currentState}", 10, getScreenHeight() - startY + 130, 16, White)
+    drawText(fmt"isRecording: {isRecording}", 10, getScreenHeight() - startY + 150, 16, White)
+    if currentChart != nil:
+      drawText(fmt"currentChart.notes.len: {currentChart.notes.len}", 10, getScreenHeight() - startY + 170, 16, White)
+      drawText(fmt"currentChart.songPath: {currentChart.songPath}", 10, getScreenHeight() - startY + 190, 16, White)
+      drawText(fmt"currentResults: {currentResults}", 10, getScreenHeight() - startY + 210, 16, White)
+      drawText(fmt"playerHitCount (1, 2, 3, 4): {playerHitCount[0]}, {playerHitCount[1]}, {playerHitCount[2]}, {playerHitCount[3]}", 10, getScreenHeight() - startY + 230, 16, White)
+    else:
+      if currentState == MainMenu:
+        drawText(fmt"cachedPreviewLength: {previewMusicCache.len}", 10, getScreenHeight() - startY + 170, 16, White)
+        drawText(fmt"currentPreviewSong: {currentPreviewSong}", 10, getScreenHeight() - startY + 190, 16, White)
 

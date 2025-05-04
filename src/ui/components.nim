@@ -1,4 +1,6 @@
 import raylib
+from ../states import TitleSize, TitlePadding
+
 type
   InteractableKind* = enum
     ikButton, ikTextLabel, ikListItem
@@ -39,6 +41,11 @@ type
       listItemTextColor*: Color
       subtitleColor*: Color
       rightTextColor*: Color
+      isLongTitle*: bool
+      titleScrollPos*: float = 0.0
+      titleScrollDir*: int = 1  # 1 = right, -1 = left
+      titleScrollSpeed*: float = 40.0
+      titleScrollPause*: float = 0.0
 
 proc newButton*(x, y: float, width, height: float, label: string, 
                 bgColor, hoverColor, textColor: Color): Interactable =
@@ -90,6 +97,11 @@ proc update*(self: Interactable, mousePos: Vector2): bool =
   let prevHovered = self.hovered
   self.hovered = checkCollisionPointRec(mousePos, self.bounds)
   self.clicked = self.hovered and isMouseButtonReleased(MouseButton.Left)
+
+  if self.kind == ikListItem:
+    if not self.hovered and prevHovered:
+      self.titleScrollPos = 0.0
+      self.titleScrollPause = 0.0
   
   return self.clicked
 
@@ -125,13 +137,61 @@ proc draw*(self: Interactable) =
       drawRectangleRounded(self.bounds, 0.5, 10, bgColor)
       drawRectangleRoundedLines(self.bounds, 0.5, 10, White)
       
-      # Draw title
-      drawText(self.title, 
-              (self.bounds.x + 20).int32, 
-              (self.bounds.y + 15).int32, 
-              self.titleSize, 
-              self.listItemTextColor)
-      
+      if self.isLongTitle and self.hovered:
+        let visibleWidth = self.bounds.width - 40  # 20px padding
+        
+        let titleWidth = float(measureText(self.title, self.titleSize))
+        
+        if titleWidth > visibleWidth:
+          let titleClipRect = Rectangle(
+            x: self.bounds.x + 20,
+            y: self.bounds.y + 15,
+            width: visibleWidth,
+            height: self.titleSize.float
+          )
+          
+          # save current scissor state - instead of nesting scissors
+          endScissorMode()
+          
+          beginScissorMode(
+            titleClipRect.x.int32,
+            titleClipRect.y.int32,
+            titleClipRect.width.int32,
+            titleClipRect.height.int32
+          )
+          
+          drawText(self.title, 
+                  (self.bounds.x + 20 - self.titleScrollPos).int32, 
+                  (self.bounds.y + 15).int32, 
+                  self.titleSize, 
+                  self.listItemTextColor)
+          
+          endScissorMode()
+          
+          # reapply scissor from drawMenu
+          let contentTop = float(TitleSize + TitlePadding * 2)
+          let contentBottom = getScreenHeight() - 60
+          beginScissorMode(
+            0,
+            contentTop.int32,
+            getScreenWidth(),
+            (contentBottom - contentTop.int32).int32
+          )
+        else:
+          # Title fits no need for scrolling
+          drawText(self.title, 
+                  (self.bounds.x + 20).int32, 
+                  (self.bounds.y + 15).int32, 
+                  self.titleSize, 
+                  self.listItemTextColor)
+      else:
+        # title without scrolling
+        drawText(self.title, 
+                (self.bounds.x + 20).int32, 
+                (self.bounds.y + 15).int32, 
+                self.titleSize, 
+                self.listItemTextColor)
+       
       if self.subtitle1.len > 0:
         drawText(self.subtitle1, 
                 (self.bounds.x + 20).int32, 
