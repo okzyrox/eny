@@ -95,13 +95,15 @@ proc createInteractables() =
       artist,
       creator,
       chart.difficultyName,
+      chart.lengthFormatted,
       chart.path,
       colorAlpha(BackgroundColor, 0.5),
       colorAlpha(BackgroundColor, 0.8),
       colorAlpha(BackgroundColor, 0.8),
       AccentColor2,
       MiscTextColor,
-      TextColor
+      TextColor,
+      MiscTextColor
     )
 
     if title.len > LongTitleLength:

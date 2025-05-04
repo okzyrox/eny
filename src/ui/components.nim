@@ -30,9 +30,11 @@ type
       subtitle1*: string
       subtitle2*: string
       rightText*: string
+      miscText*: string
       selected*: bool
       data*: string
       titleSize*: int32 = 24
+      miscTextSize*: int32 = 18 
       subtitleSize*: int32 = 18
       rightTextSize*: int32 = 20
       listItemBgColor*: Color
@@ -41,6 +43,7 @@ type
       listItemTextColor*: Color
       subtitleColor*: Color
       rightTextColor*: Color
+      miscTextColor*: Color
       isLongTitle*: bool
       titleScrollPos*: float = 0.0
       titleScrollDir*: int = 1  # 1 = right, -1 = left
@@ -72,8 +75,8 @@ proc newTextLabel*(x, y: float, normalText, hoverText: string, url: string,
     textHoverColor: textHoverColor
   )
 
-proc newListItem*(x, y: float, width, height: float, title, subtitle1, subtitle2, rightText, data: string,
-                 listItemBgColor, listItemHoverColor, selectedColor, listItemTextColor, subtitleColor, rightTextColor: Color): Interactable =
+proc newListItem*(x, y: float, width, height: float, title, subtitle1, subtitle2, rightText, miscText, data: string,
+                 listItemBgColor, listItemHoverColor, selectedColor, listItemTextColor, subtitleColor, rightTextColor, miscTextColor: Color): Interactable =
   result = Interactable(
     kind: ikListItem,
     bounds: Rectangle(x: x, y: y, width: width, height: height),
@@ -81,13 +84,15 @@ proc newListItem*(x, y: float, width, height: float, title, subtitle1, subtitle2
     subtitle1: subtitle1,
     subtitle2: subtitle2,
     rightText: rightText,
+    miscText: miscText,
     data: data,
     listItemBgColor: listItemBgColor,
     listItemHoverColor: listItemHoverColor,
     selectedColor: selectedColor,
     listItemTextColor: listItemTextColor,
     subtitleColor: subtitleColor,
-    rightTextColor: rightTextColor
+    rightTextColor: rightTextColor,
+    miscTextColor: miscTextColor
   )
 
 proc update*(self: Interactable, mousePos: Vector2): bool =
@@ -206,6 +211,15 @@ proc draw*(self: Interactable) =
                 (self.bounds.y + 70).int32, 
                 self.subtitleSize, 
                 self.subtitleColor)
+      
+      if self.miscText.len > 0:
+        let miscTextWidth = measureText(self.miscText, self.miscTextSize)
+        let centerX = (self.bounds.x + (self.bounds.width / 2) - (miscTextWidth / 2)).int32
+        drawText(self.miscText, 
+                centerX, 
+                (self.bounds.y + self.bounds.height - self.miscTextSize.float - 10).int32, 
+                self.miscTextSize, 
+                self.miscTextColor)
       
       if self.rightText.len > 0:
         let rightTextWidth = measureText(self.rightText, self.rightTextSize)
