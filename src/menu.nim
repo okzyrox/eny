@@ -1,7 +1,10 @@
+## eny
+## 
+## cc: okzyrox
 import raylib
-import discord_rpc
-import std/[math, browsers, options, os, tables]
-import menuchart, states, chart
+# import discord_rpc
+import std/[math, browsers, os, tables]
+import ./[menuchart, states, chart, utils]
 import ui/components
 
 const
@@ -83,8 +86,8 @@ proc createInteractables() =
   for i, chart in menuState.charts:
     let yPos = contentTop + (i * (MenuItemHeight + MenuItemPadding)) + menuState.scrollOffset.int
     let title = if chart.title.len > 0: chart.title else: "Unknown Title"
-    let artist = if chart.artist.len > 0: "Artist: " & chart.artist else: ""
-    let creator = if chart.creator.len > 0: "Charter: " & chart.creator else: ""
+    let artist = if chart.artist.len > 0: chart.artist else: "" # "Artist: " & 
+    let creator = if chart.creator.len > 0: chart.creator else: "" # "Charter: " & 
     
     let listItem = newListItem(
       (getScreenWidth() - MenuItemWidth) / 2,
@@ -92,7 +95,9 @@ proc createInteractables() =
       MenuItemWidth.float,
       MenuItemHeight.float,
       title,
+      "Artist:",
       artist,
+      "Charter:",
       creator,
       chart.difficultyName,
       chart.lengthFormatted,
@@ -102,6 +107,7 @@ proc createInteractables() =
       colorAlpha(BackgroundColor, 0.8),
       AccentColor2,
       MiscTextColor,
+      AccentColor,
       TextColor,
       MiscTextColor
     )
@@ -178,6 +184,11 @@ proc handleSongPreview(hoveredIndex: int) =
       
       if previewMusicCache.hasKey(hoveredSongPath):
         playMusicStream(previewMusicCache[hoveredSongPath])
+        let currentPlaybackTime = getMusicTimePlayed(previewMusicCache[hoveredSongPath])
+        let totalLength = getMusicTimeLength(previewMusicCache[hoveredSongPath])
+        let previewPoint = min(30.0, totalLength / 3.0)
+        if currentPlaybackTime < previewPoint:
+          seekMusicStream(previewMusicCache[hoveredSongPath], previewPoint)
         previewMusicActive = true
         previewFadeState = fsFadeIn
         previewFadeTimer = 0.0

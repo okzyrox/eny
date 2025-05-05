@@ -1,5 +1,10 @@
-import json, os, strformat
+## eny
+## 
+## cc: okzyrox
+import std/[json, os]
 import raylib
+
+import ./[utils]
 
 type
   ChartInfo* = object
@@ -11,16 +16,6 @@ type
     difficultyName*: string
     length*: float
     lengthFormatted*: string
-
-proc formatTime(seconds: float): string =
-  let totalSeconds = int(seconds)
-  let hours = totalSeconds div 3600
-  let minutes = (totalSeconds mod 3600) div 60
-  let seconds = totalSeconds mod 60
-  if hours > 0:
-    return &"{hours:02}:{minutes:02}:{seconds:02}"
-  else:
-    return &"{minutes:02}:{seconds:02}"
 
 proc loadChartInfo*(filePath: string): ChartInfo =
   let jsonContent = parseFile(filePath)

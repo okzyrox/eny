@@ -9,7 +9,6 @@ const
   SpriteSize = 16
   SheetSize = 64
   NotesPerRow = SheetSize div SpriteSize
-  NotesCount = NotesPerRow * NotesPerRow
   SpriteUpscale* = 64
 
 type

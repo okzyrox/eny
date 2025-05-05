@@ -14,7 +14,8 @@ import ./[
 
   menu,
   states,
-  results
+  results,
+  utils
 ]
 
 const
@@ -93,19 +94,15 @@ proc drawRecordingUI(recordedNotes: seq[RecordedNote]) =
 
 proc drawPlayerStats(titleX: int32) =
   let comboText = fmt"Combo: {currentResults.currentCombo}"
-  let comboWidth = measureText(comboText, 20)
   let maxComboText = fmt"(MAX: {currentResults.maxCombo})"
-  drawText(comboText, int32(titleX), 130, 20, White)
-  drawText(maxComboText, int32(titleX + comboWidth + 10), 130, 20, EnyPink)
+  drawDualText(comboText, maxComboText, int32(titleX), 130, 20, 10, White, EnyPink)
   
-
   let endTime = chartLength - songPosition
   
   if endTime > 0:
-    let timeText = fmt"Time: {songPosition:.2f}s"
-    let timeWidth = measureText(timeText, 20)
-    drawText(timeText, int32(titleX), 160, 20, TextColor)
-    drawText(fmt"(End: {endTime:.2f}s)", int32(titleX + timeWidth + 15), 160, 20, MiscTextColor)
+    let timeText = fmt"Time: " & formatTime(songPosition)
+    let endTimeText = fmt"(End: " & formatTime(endTime) & ")"
+    drawDualText(timeText, endTimeText, int32(titleX), 160, 20, 16, TextColor, MiscTextColor)
   drawText(fmt"Score: {currentResults.score}", titleX, 190, 20, AccentColor2)
   drawText(fmt"Accuracy: {currentResults.accuracy:.2f}%", titleX, 220, 20, AccentColor2)
   
@@ -130,7 +127,7 @@ proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacin
   let startX32 = int32(startX)
   let totalNotesWidth32 = int32(totalNotesWidth)
 
-  let bgPadding = 20
+  # let bgPadding = 20
   let bgRect = Rectangle(
     x: float(startX32 - 20),
     y: float(0),

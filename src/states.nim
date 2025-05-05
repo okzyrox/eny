@@ -1,4 +1,7 @@
-import chart, config, hit_rating
+## eny
+## 
+## cc: okzyrox
+import ./[chart, config, hit_rating, utils]
 import raylib 
 import discord_rpc
 import std/[os, options, tables, strformat, times]
@@ -20,20 +23,10 @@ type
     miss*: int
 
 proc `$`*(results: GameResults): string =
-  return fmt"Score: {results.score}, Max Combo: {results.maxCombo}, Current Combo: {results.currentCombo}, Accuracy: {results.accuracy}, Perfect: {results.perfect}, Great: {results.great}, Good: {results.good}, OK: {results.ok}, Bad: {results.bad}, Miss: {results.miss}"
+  return fmt"Score: {results.score}, Max Combo: {results.maxCombo}, Current Combo: {results.currentCombo}, Accuracy: {results.accuracy:.2f}, Perfect: {results.perfect}, Great: {results.great}, Good: {results.good}, OK: {results.ok}, Bad: {results.bad}, Miss: {results.miss}"
 
 
 const
-  BackgroundColor* = Color(r: 48, g: 25, b: 52, a: 255)
-  BackgroundColor2* = Color(r: 30, g: 10, b: 20, a: 255)
-  BackgroundColor3* = Color(r: 15, g: 15, b: 25, a: 255)
-  BackgroundColor4* = Color(r: 41, g: 8, b: 47, a: 255)
-  AccentColor* = Color(r: 230, g: 230, b: 250, a: 255)
-  AccentColor2* = Color(r: 207, g: 159, b: 255, a: 255)
-  TextColor* = Color(r: 239, g: 209, b: 229, a: 255)
-  MiscTextColor* = Color(r: 150, g: 150, b: 150, a: 255)
-  EnyPink* = Color(r: 229, g: 88, b: 170 , a: 255)
-
   # menu/ui
   TitleSize* = 60
   TitlePadding* = 50
@@ -267,19 +260,19 @@ proc drawDebugInfo*() =
   else:
     drawText("Debug Info:", 10, getScreenHeight() - startY + 10, 18, Yellow)
     drawFPS(10, getScreenHeight() - startY + 30)
-    drawText(fmt"songStarted: {songStarted}", 10, getScreenHeight() - startY + 50, 16, White)
-    drawText(fmt"songEnded: {songEnded}", 10, getScreenHeight() - startY + 70, 16, White)
-    drawText(fmt"chartLength: {chartLength}", 10, getScreenHeight() - startY + 90, 16, White)
-    drawText(fmt"songPosition: {songPosition}", 10, getScreenHeight() - startY + 110, 16, White)
-    drawText(fmt"currentState: {currentState}", 10, getScreenHeight() - startY + 130, 16, White)
-    drawText(fmt"isRecording: {isRecording}", 10, getScreenHeight() - startY + 150, 16, White)
+    drawDualText("songStarted:", $songStarted, 10, getScreenHeight() - startY + 50, 16, 8, White, Yellow)
+    drawDualText("songEnded:", $songEnded, 10, getScreenHeight() - startY + 70, 16, 8, White, Yellow)
+    drawDualText("chartLength:", $chartLength, 10, getScreenHeight() - startY + 90, 16, 8, White, Yellow)
+    drawDualText("songPosition:", $songPosition, 10, getScreenHeight() - startY + 110, 16, 8, White, Yellow)
+    drawDualText("currentState:", $currentState, 10, getScreenHeight() - startY + 130, 16, 8, White, Yellow)
+    drawDualText("isRecording:", $isRecording, 10, getScreenHeight() - startY + 150, 16, 8, White, Yellow)
     if currentChart != nil:
-      drawText(fmt"currentChart.notes.len: {currentChart.notes.len}", 10, getScreenHeight() - startY + 170, 16, White)
-      drawText(fmt"currentChart.songPath: {currentChart.songPath}", 10, getScreenHeight() - startY + 190, 16, White)
-      drawText(fmt"currentResults: {currentResults}", 10, getScreenHeight() - startY + 210, 16, White)
-      drawText(fmt"playerHitCount (1, 2, 3, 4): {playerHitCount[0]}, {playerHitCount[1]}, {playerHitCount[2]}, {playerHitCount[3]}", 10, getScreenHeight() - startY + 230, 16, White)
+      drawDualText("currentChart.notes.len:", $currentChart.notes.len, 10, getScreenHeight() - startY + 170, 16, 8, White, AccentColor2)
+      drawDualText("currentChart.songPath:", $currentChart.songPath, 10, getScreenHeight() - startY + 190, 16, 8, White, AccentColor2)
+      drawDualText("currentResults:", $currentResults, 10, getScreenHeight() - startY + 210, 16, 8, White, AccentColor2)
+      drawDualText("playerHitCount (1, 2, 3, 4):", fmt"{playerHitCount[0]}, {playerHitCount[1]}, {playerHitCount[2]}, {playerHitCount[3]}", 10, getScreenHeight() - startY + 230, 16, 8, White, AccentColor2)
     else:
       if currentState == MainMenu:
-        drawText(fmt"cachedPreviewLength: {previewMusicCache.len}", 10, getScreenHeight() - startY + 170, 16, White)
-        drawText(fmt"currentPreviewSong: {currentPreviewSong}", 10, getScreenHeight() - startY + 190, 16, White)
+        drawDualText("cachedPreviewLength:", $previewMusicCache.len, 10, getScreenHeight() - startY + 170, 16, 8, White, AccentColor)
+        drawDualText("currentPreviewSong:", $currentPreviewSong, 10, getScreenHeight() - startY + 190, 16, 8, White, AccentColor)
 

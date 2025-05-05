@@ -1,9 +1,11 @@
+## eny
+## 
+## cc: okzyrox
 import raylib
-import states
+import ./[states, utils]
 
-import std/[math, strformat]
+import std/[strformat]
 
-var accuracy: float = 0.0
 
 proc updateResults*() =
   if isKeyPressed(Space) or isMouseButtonReleased(Left):
@@ -11,45 +13,27 @@ proc updateResults*() =
     resetResultsScreenFade()
     setState(MainMenu)
   
-  accuracy = round(currentResults.accuracy * 100, 2)
-
-var screenWidth = getScreenWidth()
-var screenHeight = getScreenHeight()
 
 proc drawResults*() =
   beginDrawing()
   clearBackground(BackgroundColor4)
 
-  drawText("Results", screenWidth div 2 + 225, 100, 50, AccentColor2)
+  drawText("Results", getScreenWidth() div 2 + 225, 100, 50, AccentColor2)
   
-  drawText("Score:", 200, 200, 30, TextColor)
-  drawText($currentResults.score, 400, 200, 30, Gold)
-  
-  drawText("Max Combo:", 200, 250, 30, TextColor)
-  drawText($currentResults.maxCombo, 400, 250, 30, White)
-  
-  drawText("Accuracy:", 200, 300, 30, TextColor)
-  drawText(fmt"{currentResults.accuracy:.2f}%", 400, 300, 30, White)
-  
-  drawText("Perfect:", 200, 350, 30, TextColor)
-  drawText($currentResults.perfect, 400, 350, 30, Gold)
+  drawDualText("Score:", $currentResults.score, 200, 200, 30, 10, TextColor, Gold)
 
-  drawText("Great:", 200, 400, 30, TextColor)
-  drawText($currentResults.great, 400, 400, 30, Green)
+  drawDualText("Max Combo:", $currentResults.maxCombo, 200, 250, 30, 10, TextColor, AccentColor2)
 
-  drawText("Good:", 200, 450, 30, TextColor)
-  drawText($currentResults.good, 400, 450, 30, Yellow)
+  drawDualText("Accuracy:", fmt"{currentResults.accuracy:.2f}%", 200, 300, 30, 10, TextColor, Gold)
 
-  drawText("OK:", 200, 500, 30, TextColor)
-  drawText($currentResults.ok, 400, 500, 30, Orange)
+  drawDualText("Perfect:", $currentResults.perfect, 200, 350, 30, 10, TextColor, PerfectColor)
+  drawDualText("Great:", $currentResults.great, 200, 400, 30, 10, TextColor, GreatColor)
+  drawDualText("Good:", $currentResults.good, 200, 450, 30, 10, TextColor, GoodColor)
+  drawDualText("OK:", $currentResults.ok, 200, 500, 30, 10, TextColor, OkColor)
+  drawDualText("Bad:", $currentResults.bad, 200, 550, 30, 10, TextColor, BadColor)
+  drawDualText("Miss:", $currentResults.miss, 200, 600, 30, 10, TextColor, MissColor)
 
-  drawText("Bad:", 200, 550, 30, TextColor)
-  drawText($currentResults.bad, 400, 550, 30, Red)
-
-  drawText("Miss:", 200, 600, 30, TextColor)
-  drawText($currentResults.miss, 400, 600, 30, DarkGray)
-  
-  drawText("Press SPACE or click to continue", screenWidth div 2 - 200, screenHeight - 100, 30, LightGray)
+  drawText("Press SPACE or click to continue", getScreenWidth() div 2, getScreenHeight() - 100, 30, LightGray)
 
   if resultsScreenFadeIn:
     if resultsScreenFadeStartTime == 0.0:

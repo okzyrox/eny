@@ -1,5 +1,5 @@
 import raylib
-from ../states import TitleSize, TitlePadding, LongTitleLength
+import ../[states, utils]
 
 type
   InteractableKind* = enum
@@ -27,7 +27,9 @@ type
       textHoverColor*: Color
     of ikListItem:
       title*: string
+      subtitle1prefix*: string
       subtitle1*: string
+      subtitle2prefix*: string
       subtitle2*: string
       rightText*: string
       miscText*: string
@@ -42,6 +44,7 @@ type
       selectedColor*: Color
       listItemTextColor*: Color
       subtitleColor*: Color
+      subtitleSuffixColor*: Color
       rightTextColor*: Color
       miscTextColor*: Color
       isLongTitle*: bool
@@ -75,13 +78,15 @@ proc newTextLabel*(x, y: float, normalText, hoverText: string, url: string,
     textHoverColor: textHoverColor
   )
 
-proc newListItem*(x, y: float, width, height: float, title, subtitle1, subtitle2, rightText, miscText, data: string,
-                 listItemBgColor, listItemHoverColor, selectedColor, listItemTextColor, subtitleColor, rightTextColor, miscTextColor: Color): Interactable =
+proc newListItem*(x, y: float, width, height: float, title, subtitle1prefix, subtitle1, subtitle2prefix, subtitle2, rightText, miscText, data: string,
+                 listItemBgColor, listItemHoverColor, selectedColor, listItemTextColor, subtitleColor, subtitleSuffixColor, rightTextColor, miscTextColor: Color): Interactable =
   result = Interactable(
     kind: ikListItem,
     bounds: Rectangle(x: x, y: y, width: width, height: height),
     title: title,
+    subtitle1prefix: subtitle1prefix,
     subtitle1: subtitle1,
+    subtitle2prefix: subtitle2prefix,
     subtitle2: subtitle2,
     rightText: rightText,
     miscText: miscText,
@@ -91,6 +96,7 @@ proc newListItem*(x, y: float, width, height: float, title, subtitle1, subtitle2
     selectedColor: selectedColor,
     listItemTextColor: listItemTextColor,
     subtitleColor: subtitleColor,
+    subtitleSuffixColor: subtitleSuffixColor,
     rightTextColor: rightTextColor,
     miscTextColor: miscTextColor
   )
@@ -198,19 +204,23 @@ proc draw*(self: Interactable) =
                 self.titleSize, 
                 self.listItemTextColor)
        
-      if self.subtitle1.len > 0:
-        drawText(self.subtitle1, 
-                (self.bounds.x + 20).int32, 
-                (self.bounds.y + 45).int32, 
-                self.subtitleSize, 
-                self.subtitleColor)
+      if self.subtitle1.len > 0:    
+        drawDualText(self.subtitle1prefix, self.subtitle1, 
+                    (self.bounds.x + 20).int32, 
+                    (self.bounds.y + 45).int32, 
+                    self.subtitleSize, 
+                    8, 
+                    self.subtitleColor, 
+                    self.subtitleSuffixColor)
       
       if self.subtitle2.len > 0:
-        drawText(self.subtitle2, 
-                (self.bounds.x + 20).int32, 
-                (self.bounds.y + 70).int32, 
-                self.subtitleSize, 
-                self.subtitleColor)
+        drawDualText(self.subtitle2prefix, self.subtitle2, 
+                    (self.bounds.x + 20).int32, 
+                    (self.bounds.y + 70).int32, 
+                    self.subtitleSize, 
+                    8, 
+                    self.subtitleColor, 
+                    self.subtitleSuffixColor)
       
       if self.miscText.len > 0:
         let miscTextWidth = measureText(self.miscText, self.miscTextSize)
