@@ -206,7 +206,7 @@ proc draw*(self: Interactable) =
                 self.listItemTextColor)
        
       if self.subtitle1.len > 0:    
-        drawDualText("noto-sans-cjk", self.subtitle1prefix, self.subtitle1, 
+        drawDualText(self.subtitle1prefix, self.subtitle1, 
                     (self.bounds.x + 20).int32, 
                     (self.bounds.y + 45).int32, 
                     self.subtitleSize, 
