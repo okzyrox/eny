@@ -15,6 +15,54 @@ type
     # keybinds
     keybinds*: seq[string]
 
+    # load
+
+    contentFolderPath*: string
+    assetFolderPath*: string
+
+const ConfigDefaults* = EnyConfig(
+  recordingModeSongName: "princess_of_winter",
+  scrollSpeed: 2.0,
+  keybinds: @["D", "F", "J", "K"],
+  contentFolderPath: "content",
+  assetFolderPath: "assets"
+)
+
+proc `[]`*(config: EnyConfig, key: string): JsonNode =
+  case key:
+    of "recordingModeSong":
+      return %config.recordingModeSongName
+    of "scrollSpeed":
+      return %config.scrollSpeed
+    of "keybinds":
+      let keybindsNode = newJArray()
+      for keybind in config.keybinds:
+        keybindsNode.add(%keybind)
+      return keybindsNode
+    of "contentFolderPath":
+      return %config.contentFolderPath
+    of "assetFolderPath":
+      return %config.assetFolderPath
+    else:
+      raise newException(ValueError, "Invalid key in config access")
+
+proc `[]=`*(config: var EnyConfig, key: string, value: JsonNode) =
+  case key:
+    of "recordingModeSong":
+      config.recordingModeSongName = value.getStr()
+    of "scrollSpeed":
+      config.scrollSpeed = value.getFloat()
+    of "keybinds":
+      config.keybinds = @[]
+      for keybindNode in value:
+        config.keybinds.add(keybindNode.getStr())
+    of "contentFolderPath":
+      config.contentFolderPath = value.getStr()
+    of "assetFolderPath":
+      config.assetFolderPath = value.getStr()
+    else:
+      raise newException(ValueError, "Invalid key in config access")
+
 proc `%`*(config: EnyConfig): JsonNode =
   var jsonObj = newJObject()
   jsonObj["recordingModeSong"] = %config.recordingModeSongName
@@ -23,30 +71,64 @@ proc `%`*(config: EnyConfig): JsonNode =
   for keybind in config.keybinds:
     keybindsNode.add(%keybind)
   jsonObj["keybinds"] = keybindsNode
+  jsonObj["contentFolderPath"] = %config.contentFolderPath
+  jsonObj["assetFolderPath"] = %config.assetFolderPath
   return jsonObj
+
+proc saveEnyConfig*(config: EnyConfig, filePath: string) =
+  var jsonObj = %config
+  writeFile(filePath, pretty(jsonObj))
+  echo "Config file saved successfully."
 
 proc loadEnyConfig*(filePath: string): EnyConfig =
   if not fileExists(filePath):
     echo "Config file not found, creating a new one."
-    var defaultConfig = EnyConfig(
-      recordingModeSongName: "princess_of_winter",
-      scrollSpeed: 1.8,
-      keybinds: @["D", "F", "J", "K"]
-    )
-    var jsonObj = %defaultConfig
-    writeFile(filePath, pretty(jsonObj))
+    var defaultConfig = ConfigDefaults
+    saveEnyConfig(defaultConfig, filePath)
+    echo "Default config file created at " & filePath
     return defaultConfig
   else:
     let jsonContent = readFile(filePath)
     let jsonNode = parseJson(jsonContent)
 
     var config = EnyConfig()
+
+    let hasRecordingModeSong = jsonNode.hasKey("recordingModeSong")
+    let hasScrollSpeed = jsonNode.hasKey("scrollSpeed")
+    let hasKeybinds = jsonNode.hasKey("keybinds")
+    let hasContentFolderPath = jsonNode.hasKey("contentFolderPath")
+    let hasAssetFolderPath = jsonNode.hasKey("assetFolderPath")
+
+    if not hasRecordingModeSong:
+      jsonNode["recordingModeSong"] = ConfigDefaults["recordingModeSong"]
+    if not hasScrollSpeed:
+      jsonNode["scrollSpeed"] = ConfigDefaults["scrollSpeed"]
+    if not hasKeybinds:
+      jsonNode["keybinds"] = ConfigDefaults["keybinds"]
+
     config.recordingModeSongName = jsonNode["recordingModeSong"].getStr()
     config.scrollSpeed = jsonNode["scrollSpeed"].getFloat()
     config.keybinds = @[]
     for keybindNode in jsonNode["keybinds"]:
       config.keybinds.add(keybindNode.getStr())
+    
+    if not hasContentFolderPath:
+      jsonNode["contentFolderPath"] = ConfigDefaults["contentFolderPath"]
+    if not hasAssetFolderPath:
+      jsonNode["assetFolderPath"] = ConfigDefaults["assetFolderPath"]
+  
+    config.contentFolderPath = jsonNode["contentFolderPath"].getStr()
+    if not dirExists(config.contentFolderPath):
+      echo "Content folder not found at " & config.contentFolderPath
+      quit(1)
+    
+    config.assetFolderPath = jsonNode["assetFolderPath"].getStr()
+    if not dirExists(config.assetFolderPath):
+      echo "Asset folder not found at " & config.assetFolderPath
+      quit(1)
 
+    saveEnyConfig(config, filePath)
+    echo "Config file loaded successfully."
     return config
 
 proc getKeyFromKeybind*(keybind: string): KeyboardKey =

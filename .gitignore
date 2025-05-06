@@ -1,29 +1,15 @@
+# project
+
+# excludes
+!tools/*.nim
+!src/**
+!assets/**
+!.github/**
+!*.bat
+
+# ignores
+*.exe 
 *.dll
-*.lib
-*.so
-*.dylib
-
-*.exe
-*.out
-
-bin/**
-
-# eny
-
 eny.json
-
-# Quaver
-
 *.qua
-
-# converter
-
-QuaToEnyConverter/**
-tools/out/**
 tools/QuaToEnyConverter/**
-*.mp3
-!content/music/**
-
-# testing
-
-build2.bat

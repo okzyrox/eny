@@ -48,7 +48,7 @@ proc loadChartInfo*(filePath: string): ChartInfo =
 
 proc loadAllChartInfo*(): seq[ChartInfo] =
   result = @[]
-  for file in walkFiles("content/chart/*.json"):
+  for file in walkFiles(contentFolderPath & "/chart/*.json"):
     try:
       let chartInfo = loadChartInfo(file)
       result.add(chartInfo)

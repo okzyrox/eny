@@ -4,6 +4,8 @@
 import raylib
 import std/[json, times, algorithm, os]
 
+import ./[utils]
+
 type
   ChartNote* = ref object of RootObj
     columnIndex*: int
@@ -88,9 +90,9 @@ proc saveRecordedChart*(notes: seq[RecordedNote], songName: string) =
   jsonObj["notes"] = notesArray
   
   let timestamp = now().format("yyyy-MM-dd'T'HH-mm-ss")
-  let filePath = "content/chart/recorded_" & timestamp & ".json"
+  let filePath = contentFolderPath & "/chart/recorded_" & timestamp & ".json"
   
-  createDir("content/chart")
+  createDir(contentFolderPath & "/chart")
   
   writeFile(filePath, pretty(jsonObj))
   echo "Chart saved to: ", filePath

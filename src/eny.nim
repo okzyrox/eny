@@ -4,7 +4,7 @@
 import raylib
 import discord_rpc
 
-import std/[tables, strformat, sequtils, math, options]
+import std/[tables, strformat, sequtils, math, options, random]
 
 import ./[
   hit_rating,
@@ -88,9 +88,9 @@ proc updateKeyStates() =
 proc drawRecordingUI(recordedNotes: seq[RecordedNote]) = 
   let recordingText = "RECORDING"
   let textWidth = measureText(recordingText, 20)
-  drawText(recordingText, int32(screenWidth - textWidth - 10), 10, 20, AccentColor)
-  drawText("Press G to save", int32(screenWidth - measureText("Press G to save", 16) - 10), 35, 16, AccentColor)
-  drawText(fmt"Total Notes: {recordedNotes.len}", 10, 70, 20, TextColor)
+  drawFText(recordingText, int32(screenWidth - textWidth - 10), 10, 20, AccentColor)
+  drawFText("Press G to save", int32(screenWidth - measureText("Press G to save", 16) - 10), 35, 16, AccentColor)
+  drawFText(fmt"Total Notes: {recordedNotes.len}", 10, 70, 20, TextColor)
 
 proc drawPlayerStats(titleX: int32) =
   let comboText = fmt"Combo: {currentResults.currentCombo}"
@@ -103,8 +103,8 @@ proc drawPlayerStats(titleX: int32) =
     let timeText = fmt"Time: " & formatTime(songPosition)
     let endTimeText = fmt"(End: " & formatTime(endTime) & ")"
     drawDualText(timeText, endTimeText, int32(titleX), 160, 20, 16, TextColor, MiscTextColor)
-  drawText(fmt"Score: {currentResults.score}", titleX, 190, 20, AccentColor2)
-  drawText(fmt"Accuracy: {currentResults.accuracy:.2f}%", titleX, 220, 20, AccentColor2)
+  drawFText(fmt"Score: {currentResults.score}", titleX, 190, 20, AccentColor2)
+  drawFText(fmt"Accuracy: {currentResults.accuracy:.2f}%", titleX, 220, 20, AccentColor2)
   
   let statY = int32(240)
   let perfectText = "PERFECT: " & $currentResults.perfect
@@ -113,12 +113,12 @@ proc drawPlayerStats(titleX: int32) =
   let okText = "OK: " & $currentResults.ok
   let badText = "BAD: " & $currentResults.bad
   let missText = "MISS: " & $currentResults.miss
-  drawText(perfectText, titleX, statY, 16, getRatingColor(hrPerfect))
-  drawText(greatText, titleX, statY + 20, 16, getRatingColor(hrGreat))
-  drawText(goodText, titleX, statY + 40, 16, getRatingColor(hrGood))
-  drawText(okText, titleX, statY + 60, 16, getRatingColor(hrOk))
-  drawText(badText, titleX, statY + 80, 16, getRatingColor(hrBad))
-  drawText(missText, titleX, statY + 100, 16, getRatingColor(hrMiss))
+  drawFText(perfectText, titleX, statY, 16, getRatingColor(hrPerfect))
+  drawFText(greatText, titleX, statY + 20, 16, getRatingColor(hrGreat))
+  drawFText(goodText, titleX, statY + 40, 16, getRatingColor(hrGood))
+  drawFText(okText, titleX, statY + 60, 16, getRatingColor(hrOk))
+  drawFText(badText, titleX, statY + 80, 16, getRatingColor(hrBad))
+  drawFText(missText, titleX, statY + 100, 16, getRatingColor(hrMiss))
 
 proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacing: int, receptorLineY: int, receptorLineHeight: int, noteTextY: int) =
   let receptorLineY32 = int32(receptorLineY)
@@ -194,7 +194,7 @@ proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacin
     let textWidth = measureText(keyName, 20)
     let textX = int32(noteX + (SpriteUpscale - textWidth) div 2)
     let noteTextY32 = int32(noteTextY)
-    drawText(keyName, textX, noteTextY32, 20, AccentColor)
+    drawFText(keyName, textX, noteTextY32, 20, AccentColor)
 
 proc drawHitRatings(startX: int, noteSpacing: int, receptorY: int) = 
   for hit in recentHits:
@@ -208,12 +208,12 @@ proc drawHitRatings(startX: int, noteSpacing: int, receptorY: int) =
       of hrMiss: "MISS"
     
     let textWidth = measureText(ratingText, 20)
-    let textX = noteX + (SpriteUpscale - textWidth) div 2
+    let textX = noteX + 20 + (SpriteUpscale - textWidth) div 2
     let textY = int32(receptorY - 40)
     let color = getRatingColor(hit.rating)
     
     let fadeColor = fade(color, hit.alpha)
-    drawText(ratingText, int32(textX), textY, 20, fadeColor)
+    drawFText("exo2", ratingText, int32(textX), textY, 20, fadeColor)
 
 proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY: int) =
   for note in currentChart.notes:
@@ -271,7 +271,7 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
   
   if songPosition >= 0:
     let titleX = noteAreaEndX + 20
-    drawText(songTitle, int32(titleX), 100, 24, AccentColor2)
+    drawFText(songTitle, int32(titleX), 100, 24, AccentColor2)
     
     if not isRecording:
       drawPlayerStats(int32(titleX))
@@ -292,11 +292,11 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
 
   # Countdown
   if songPosition < 0:
-    drawText(songTitle, titleX, 20, 24, AccentColor2)
+    drawFText(songTitle, titleX, 20, 24, AccentColor2)
     let countdownText = $(-int(songPosition) + 1)
     let textWidth = measureText(countdownText, 40)
     let countdownX = int32((screenWidth - textWidth) div 2)
-    drawText(countdownText, countdownX, 100, 40, AccentColor)
+    drawFText(countdownText, countdownX, 100, 40, AccentColor)
   
   # Fallin notes
   if not isRecording:
@@ -382,18 +382,34 @@ proc main() =
   initAudioDevice()
   setConfigFlags(flags(VsyncHint))
   defer: closeAudioDevice()
-
-  let icon = loadImage("assets/eny/eny.png")
-  setWindowIcon(icon)
+  randomize()
 
   # load config & chart
   currentConfig = loadEnyConfig("eny.json")
+
+  if currentConfig.assetFolderPath != assetFolderPath:
+    assetFolderPath = currentConfig.assetFolderPath
+  
+  if currentConfig.contentFolderPath != contentFolderPath:
+    contentFolderPath = currentConfig.contentFolderPath
+
   if isRecording:
     loadSong(currentConfig.recordingModeSongName)
 
+  let icon = loadImage(assetFolderPath & "/eny/eny.png")
+  setWindowIcon(icon)
+
+  # load font
+
+  loadFontToCache("exo2", "exo2-medium.ttf") # Regular
+  loadFontToCache("lato", "Lato-Regular.ttf") # Alternative
+  loadFontToCache("noto-sans-cjk", "noto-sans-cjk-black.ttf") # Bold
+  setCurrentFont("exo2")
+
+  let loadedFonts = getLoadedFonts()
   # load sprites
 
-  var loadedNotes = loadNoteTextures("assets/image/notesheet.png")
+  var loadedNotes = loadNoteTextures(assetFolderPath & "/image/notesheet.png")
   activeNoteDrawTable = loadedNotes["Active"]
   inactiveNoteDrawTable = loadedNotes["Inactive"]
   
@@ -410,7 +426,7 @@ proc main() =
   let receptorLineHeight = 4
   
   # update vars
-  let chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
+  var chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
 
   # update keybinds
   if currentConfig.keybinds.len > 0:
@@ -432,6 +448,20 @@ proc main() =
     updateKeyStates()
     if isKeyPressed(KeyboardKey.P):
       debugInfoShown = not debugInfoShown
+    if isKeyPressed(KeyboardKey.Semicolon):
+      setCurrentFont(loadedFonts[rand(high(loadedFonts))])
+    if isKeyPressed(KeyboardKey.Minus):
+      var scrollSpeed = currentConfig.scrollSpeed - 0.1
+      if scrollSpeed < 0.1:
+        scrollSpeed = 0.1
+      currentConfig.scrollSpeed = scrollSpeed
+      chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
+    if isKeyPressed(KeyboardKey.Equal):
+      var scrollSpeed = currentConfig.scrollSpeed + 0.1
+      if scrollSpeed > 4.0:
+        scrollSpeed = 4.0
+      currentConfig.scrollSpeed = scrollSpeed
+      chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
     case currentState:
       of GameState.Playing:
         let deltaTime = getFrameTime()
@@ -473,14 +503,14 @@ proc main() =
             
             # fade out
             if songFading:
-              let fadeProgress = (songPosition - songFadeStartTime) / songFadeDuration
+              let fadeProgress = (songPosition - songFadeStartTime) / SongFadeDuration
               
               if fadeProgress <= 1.0:
                 let volumeLevel = 1.0 - fadeProgress
 
                 screenFadeAlpha = fadeProgress
                 setMusicVolume(currentSong, float32(volumeLevel))
-              elif songPosition - songFadeStartTime > songFadeDuration + songEndDelay:
+              elif songPosition - songFadeStartTime > SongFadeDuration + songEndDelay:
                 stopMusicStream(currentSong)
                 resultsScreenFadeIn = true
                 resultsScreenFadeStartTime = 0.0

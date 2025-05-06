@@ -30,17 +30,6 @@ find the file then download
 
 # How to...
 
-## how to make charts
-
-when you start for the first time, a file named `eny.json` is created.
-
-go into that, and change the `recordingMode` field from `false` to `true`
-
-now when you start, your inputs are recorded for charting
-
-pressing `G` will save your song in "content/chart/.."; if you want to play it i recommend renaming it for easier rememberance
-
-
 ## how to add songs (to make charts with)
 
 inside the folder `content/music` is where all the songs that can be used for the game are stored
@@ -48,14 +37,6 @@ inside the folder `content/music` is where all the songs that can be used for th
 inside `eny.json` the `recordingModeSong` configuration is the name of the song you want to use when recording
 
 currently only `.mp3` music files are supported.
-
-## how to load different charges
-
-again in the `eny.json` file, there is a `chartToLoad` field which refers to the name of a chart in `content/chart/`
-
-change it to play a different track
-
-ensure you have recording mode off too
 
 ## how to rebind keys
 

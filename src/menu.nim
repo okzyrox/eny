@@ -25,6 +25,10 @@ type
   MusicFadeState* = enum
     fsNone, fsFadeIn, fsFadeOut
 
+const EnyVersionText {.strdefine.} = "v0.1.0"
+const EnyCommitText {.strdefine.} = "000000"
+const VersionText = EnyVersionText & "-" & EnyCommitText
+
 var menuState*: MenuState
 var minScroll*: float
 var maxScroll*: float
@@ -49,7 +53,6 @@ var
   previewFadeVolume: float = 0.0
   previewFadeState: MusicFadeState = fsNone
   previewFadeTimer: float = 0.0
-  previewFadeDuration: float = 0.85
 
   existsPaths: seq[string] = @[]
 
@@ -138,7 +141,7 @@ proc initMenu*() =
   maxScroll = 0.0
 
   if not logoLoaded:
-    logoTexture = loadTexture("assets/eny/eny.png")
+    logoTexture = loadTexture(assetFolderPath & "/eny/eny.png")
     logoLoaded = true
   
   if currentPreviewId >= 0:
@@ -171,7 +174,7 @@ proc handleSongPreview(hoveredIndex: int) =
     if hoveredSongPath != "":
       if not previewMusicCache.hasKey(hoveredSongPath):
         # Load n cache music
-        let musicPath = "content/music/" & hoveredSongPath & ".mp3"
+        let musicPath = contentFolderPath & "/music/" & hoveredSongPath & ".mp3"
         if fileExists(musicPath):
           previewMusicCache[hoveredSongPath] = loadMusicStream(musicPath)
           
@@ -201,14 +204,14 @@ proc handleSongPreview(hoveredIndex: int) =
     
     case previewFadeState:
       of fsFadeIn:
-        previewFadeVolume = min(0.5, previewFadeTimer / previewFadeDuration)
-        if previewFadeTimer >= previewFadeDuration:
+        previewFadeVolume = min(0.5, previewFadeTimer / PreviewFadeDuration)
+        if previewFadeTimer >= PreviewFadeDuration:
           previewFadeState = fsNone
           previewFadeVolume = 0.5
           
       of fsFadeOut:
-        previewFadeVolume = max(0.0, 0.5 - (previewFadeTimer / previewFadeDuration))
-        if previewFadeTimer >= previewFadeDuration:
+        previewFadeVolume = max(0.0, 0.5 - (previewFadeTimer / PreviewFadeDuration))
+        if previewFadeTimer >= PreviewFadeDuration:
           stopMusicStream(previewMusicCache[currentPreviewSong])
           previewMusicActive = false
           previewFadeState = fsNone
@@ -335,7 +338,7 @@ proc updateMenu*() =
             resetGameState()
             currentChart = loadChart(interactable.data)
             currentChart.startTime = -3.0
-            currentSong = loadMusicStream("content/music/" & currentChart.songPath & ".mp3")
+            currentSong = loadMusicStream(contentFolderPath & "/music/" & currentChart.songPath & ".mp3")
             setMusicVolume(currentSong, 0.5)
             setState(GameState.Playing)
             return
@@ -378,7 +381,7 @@ proc drawMenu*() =
   
   let titleText = "Eny"
   let titleWidth = len(titleText) * 20
-  drawText(titleText, (getScreenWidth() div 2 - titleWidth div 2).int32, TitlePadding, TitleSize, EnyPink)
+  drawFText(titleText, (getScreenWidth() div 2 - titleWidth div 2).int32, TitlePadding, TitleSize, EnyPink)
   
   let contentTop = float(TitleSize + TitlePadding * 2)
   let contentBottom = getScreenHeight() - 60 
@@ -397,10 +400,10 @@ proc drawMenu*() =
   let totalContentHeight = menuState.charts.len * (MenuItemHeight + MenuItemPadding)
   if totalContentHeight > contentHeight:
     if menuState.scrollOffset > minScroll:
-      drawText("DOWN", getScreenWidth() div 2 - 10, contentBottom + 10, 30, colorAlpha(White, 0.6))
+      drawFText("DOWN", getScreenWidth() div 2 - 10, contentBottom + 10, 30, colorAlpha(White, 0.6))
     
     if menuState.scrollOffset < 0:
-      drawText("UP", getScreenWidth() div 2 - 10, (contentTop - 30).int32, 30, colorAlpha(White, 0.6))
+      drawFText("UP", getScreenWidth() div 2 - 10, (contentTop - 30).int32, 30, colorAlpha(White, 0.6))
   
   beginScissorMode(
     containerRect.x.int32, 
@@ -425,8 +428,8 @@ proc drawMenu*() =
   recordButton.draw()
   authorLabel.draw()
   
-  drawText("v0.1.0", getScreenWidth() - 100, getScreenHeight() - 40, 20, EnyPink)
-  drawText("Press ESC to exit", 20, 20, 20, MiscTextColor)
+  drawFText(VersionText, getScreenWidth() - 160, getScreenHeight() - 32, 20, EnyPink)
+  drawFText("Press ESC to exit", 20, 20, 20, MiscTextColor)
 
   drawDebugInfo()
   endDrawing()

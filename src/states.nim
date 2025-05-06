@@ -36,13 +36,25 @@ const
   PresenceAppID* = 1358181398514630958
   PresenceUpdateInterval* = 2.5
 
+  # transitions
+
+  SongFadeDuration* = 2.2
+  PreviewFadeDuration* = 0.85
+  ResultsFadeDuration* = 1.0
+
 var currentState*: GameState = MainMenu
 var currentChart*: Chart
 var currentConfig*: EnyConfig
 var currentSong*: Music
 var currentResults*: GameResults
+
+# discord presence
+
 var discordPresence*: DiscordRPC
 var lastPresenceUpdateTime*: float = 0.0
+
+# gameplay stuffs
+
 var debugInfoShown*: bool = false
 var isRecording*: bool = false
 var songStarted*: bool = false
@@ -50,7 +62,6 @@ var songPaused*: bool = false
 var songEnded*: bool = false
 var songFading*: bool = false
 var songFadeStartTime*: float = 0.0
-var songFadeDuration*: float = 3.5
 var songEndDelay*: float = 0.0
 var songPosition*: float = 0.0
 var gameTime*: float = 0.0
@@ -254,11 +265,11 @@ proc resetResultsScreenFade*() =
 let startY = int32(260)
 proc drawDebugInfo*() =
   let toggleTextPosition = if not debugInfoShown: getScreenHeight() - startY + 10 else: getScreenHeight() - startY - 20
-  drawText("Press `P` to toggle debug info", 10, toggleTextPosition, 18, MiscTextColor)
+  drawFText("Press `P` to toggle debug info", 10, toggleTextPosition, 18, MiscTextColor)
   if not debugInfoShown:
     return
   else:
-    drawText("Debug Info:", 10, getScreenHeight() - startY + 10, 18, Yellow)
+    drawFText("Debug Info:", 10, getScreenHeight() - startY + 10, 18, Yellow)
     drawFPS(10, getScreenHeight() - startY + 30)
     drawDualText("songStarted:", $songStarted, 10, getScreenHeight() - startY + 50, 16, 8, White, Yellow)
     drawDualText("songEnded:", $songEnded, 10, getScreenHeight() - startY + 70, 16, 8, White, Yellow)
@@ -275,4 +286,5 @@ proc drawDebugInfo*() =
       if currentState == MainMenu:
         drawDualText("cachedPreviewLength:", $previewMusicCache.len, 10, getScreenHeight() - startY + 170, 16, 8, White, AccentColor)
         drawDualText("currentPreviewSong:", $currentPreviewSong, 10, getScreenHeight() - startY + 190, 16, 8, White, AccentColor)
+        drawDualText("currentFontName:", $currentFontName, 10, getScreenHeight() - startY + 210, 16, 8, White, AccentColor)
 

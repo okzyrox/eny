@@ -123,22 +123,23 @@ proc draw*(self: Interactable) =
   case self.kind:
     of ikButton:
       # Draw button
+      drawRectangleRoundedLines(self.bounds, 0.5, 10, White)
       if self.hovered:
-        drawRectangle(self.bounds, self.hoverColor)
+        drawRectangleRounded(self.bounds, 0.5, 10, self.hoverColor)
       else:
-        drawRectangle(self.bounds, self.bgColor)
+        drawRectangleRounded(self.bounds, 0.5, 10, self.bgColor)
         
       let textWidth = measureText(self.label, self.fontSize)
       let textX = self.bounds.x + (self.bounds.width - textWidth.float) / 2
       let textY = self.bounds.y + (self.bounds.height - self.fontSize.float) / 2
       
-      drawText(self.label, textX.int32, textY.int32, self.fontSize, self.textColor)
+      drawFText(self.label, textX.int32, textY.int32, self.fontSize, self.textColor)
       
     of ikTextLabel:
       let text = if self.hovered: self.hoverText else: self.normalText
       let color = if self.hovered: self.textHoverColor else: self.textNormalColor
       
-      drawText(text, self.bounds.x.int32, self.bounds.y.int32, self.textSize, color)
+      drawFText(text, self.bounds.x.int32, self.bounds.y.int32, self.textSize, color)
       
     of ikListItem:
       let bgColor = if self.selected: self.selectedColor
@@ -172,7 +173,7 @@ proc draw*(self: Interactable) =
             titleClipRect.height.int32
           )
           
-          drawText(self.title, 
+          drawFText(self.title, 
                   (self.bounds.x + 20 - self.titleScrollPos).int32, 
                   (self.bounds.y + 15).int32, 
                   self.titleSize, 
@@ -191,21 +192,21 @@ proc draw*(self: Interactable) =
           )
         else:
           # Title fits no need for scrolling
-          drawText(self.title, 
+          drawFText(self.title, 
                   (self.bounds.x + 20).int32, 
                   (self.bounds.y + 15).int32, 
                   self.titleSize, 
                   self.listItemTextColor)
       else:
         # title without scrolling
-        drawText(trimmedTitle, 
+        drawFText(trimmedTitle, 
                 (self.bounds.x + 20).int32, 
                 (self.bounds.y + 15).int32, 
                 self.titleSize, 
                 self.listItemTextColor)
        
       if self.subtitle1.len > 0:    
-        drawDualText(self.subtitle1prefix, self.subtitle1, 
+        drawDualText("noto-sans-cjk", self.subtitle1prefix, self.subtitle1, 
                     (self.bounds.x + 20).int32, 
                     (self.bounds.y + 45).int32, 
                     self.subtitleSize, 
@@ -225,7 +226,7 @@ proc draw*(self: Interactable) =
       if self.miscText.len > 0:
         let miscTextWidth = measureText(self.miscText, self.miscTextSize)
         let centerX = (self.bounds.x + (self.bounds.width / 2) - (miscTextWidth / 2)).int32
-        drawText(self.miscText, 
+        drawFText(self.miscText, 
                 centerX, 
                 (self.bounds.y + self.bounds.height - self.miscTextSize.float - 10).int32, 
                 self.miscTextSize, 
@@ -233,7 +234,7 @@ proc draw*(self: Interactable) =
       
       if self.rightText.len > 0:
         let rightTextWidth = measureText(self.rightText, self.rightTextSize)
-        drawText(self.rightText, 
+        drawFText(self.rightText, 
                 (self.bounds.x + self.bounds.width - rightTextWidth.float - 20).int32, 
                 (self.bounds.y + 70).int32, 
                 self.rightTextSize, 

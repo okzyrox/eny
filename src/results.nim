@@ -18,7 +18,7 @@ proc drawResults*() =
   beginDrawing()
   clearBackground(BackgroundColor4)
 
-  drawText("Results", getScreenWidth() div 2 + 225, 100, 50, AccentColor2)
+  drawFText("Results", getScreenWidth() div 2 + 225, 100, 50, AccentColor2)
   
   drawDualText("Score:", $currentResults.score, 200, 200, 30, 10, TextColor, Gold)
 
@@ -33,14 +33,13 @@ proc drawResults*() =
   drawDualText("Bad:", $currentResults.bad, 200, 550, 30, 10, TextColor, BadColor)
   drawDualText("Miss:", $currentResults.miss, 200, 600, 30, 10, TextColor, MissColor)
 
-  drawText("Press SPACE or click to continue", getScreenWidth() div 2, getScreenHeight() - 100, 30, LightGray)
+  drawFText("Press SPACE or click to continue", getScreenWidth() div 2, getScreenHeight() - 100, 30, LightGray)
 
   if resultsScreenFadeIn:
     if resultsScreenFadeStartTime == 0.0:
       resultsScreenFadeStartTime = getTime()  # Or however you track time
     
-    let fadeInDuration = 1.0  # 1 second fade in
-    let fadeInProgress = (getTime() - resultsScreenFadeStartTime) / fadeInDuration
+    let fadeInProgress = (getTime() - resultsScreenFadeStartTime) / ResultsFadeDuration
     
     if fadeInProgress < 1.0:
       screenFadeAlpha = 1.0 - fadeInProgress
