@@ -126,6 +126,7 @@ proc loadSong*(filePath: string) =
 
 var activityStartTime*: int64 = 0
 var activityEndTime*: int64 = 0
+var rpcErrorCount*: int64 = 0
 proc updatePlayingPresence*() =
   if currentChart == nil:
     return
@@ -156,7 +157,9 @@ proc updatePlayingPresence*() =
       )
     )
   except Exception as e:
-    echo "Error setting Discord activity: ", e.msg
+    if rpcErrorCount < 20:
+      echo "Error setting Discord activity: ", e.msg
+    rpcErrorCount += 1
 
 proc updateResultsPresence*() =
   if currentChart == nil:
@@ -175,7 +178,9 @@ proc updateResultsPresence*() =
       )
     )
   except Exception as e:
-    echo "Error setting Discord activity: ", e.msg
+    if rpcErrorCount < 20:
+      echo "Error setting Discord activity: ", e.msg
+    rpcErrorCount += 1
 
 proc setState*(state: GameState) =
   currentState = state
@@ -193,7 +198,9 @@ proc setState*(state: GameState) =
           )
         )
       except Exception as e:
-        echo "Error setting Discord activity: ", e.msg
+        if rpcErrorCount < 20:
+          echo "Error setting Discord activity: ", e.msg
+        rpcErrorCount += 1
     of Playing:
       try:
         discordPresence.setActivity Activity(
@@ -205,7 +212,9 @@ proc setState*(state: GameState) =
           )
         )
       except Exception as e:
-        echo "Error setting Discord activity: ", e.msg
+        if rpcErrorCount < 20:
+          echo "Error setting Discord activity: ", e.msg
+        rpcErrorCount += 1
     of Results:
       activityStartTime = 0
       activityEndTime = 0
@@ -221,7 +230,9 @@ proc setState*(state: GameState) =
           )
         )
       except Exception as e:
-        echo "Error setting Discord activity: ", e.msg
+        if rpcErrorCount < 20:
+          echo "Error setting Discord activity: ", e.msg
+        rpcErrorCount += 1
 
 proc resetGameState*() =
   gameTime = 0.0
