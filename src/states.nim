@@ -144,16 +144,18 @@ proc updatePlayingPresence*() =
     start: activityStartTime,
     finish: activityEndTime
   )
-  
-  discordPresence.setActivity Activity(
-    details: "eny - Playing",
-    state: accuracyText,
-    timestamps: timestamps,
-    activityType: some ActivityKind.Listening,
-    assets: some ActivityAssets(
-      largeImage: "eny",
-      largeText: fmt"Playing {songName}"
-    )
+  try:
+    discordPresence.setActivity Activity(
+      details: "eny - Playing",
+      state: accuracyText,
+      timestamps: timestamps,
+      activityType: some ActivityKind.Listening,
+      assets: some ActivityAssets(
+        largeImage: "eny",
+        largeText: fmt"Playing {songName}"
+      )
+    except Exception as e:
+      echo "Error setting Discord activity: ", e.msg
   )
 
 proc updateResultsPresence*() =
