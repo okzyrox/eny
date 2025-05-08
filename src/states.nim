@@ -154,9 +154,9 @@ proc updatePlayingPresence*() =
         largeImage: "eny",
         largeText: fmt"Playing {songName}"
       )
-    except Exception as e:
-      echo "Error setting Discord activity: ", e.msg
-  )
+    )
+  except Exception as e:
+    echo "Error setting Discord activity: ", e.msg
 
 proc updateResultsPresence*() =
   if currentChart == nil:
