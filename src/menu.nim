@@ -5,7 +5,7 @@ import raylib
 # import discord_rpc
 import std/[math, browsers, os, tables]
 import ./[menuchart, states, chart, utils]
-import ui/components
+import ui/[components, titlebar]
 
 const
   MenuItemHeight = 100
@@ -24,10 +24,6 @@ type
     interactables*: seq[Interactable]  # Store all UI components
   MusicFadeState* = enum
     fsNone, fsFadeIn, fsFadeOut
-
-const EnyVersionText {.strdefine.} = "v0.1.0"
-const EnyCommitText {.strdefine.} = "000000"
-const VersionText = EnyVersionText & "-" & EnyCommitText
 
 var menuState*: MenuState
 var minScroll*: float
@@ -59,6 +55,7 @@ var
 proc createInteractables() =
   menuState.interactables = @[]
   songListItems = @[]
+  let (sx, sy) = getScaleFactors()
   
   recordButton = newButton(
     float(getScreenWidth() - RecordButtonWidth - 20),
@@ -80,7 +77,7 @@ proc createInteractables() =
     "https://www.github.com/okzyrox",
     MiscTextColor,
     AccentColor2,
-    20
+    20,
   )
   menuState.interactables.add(authorLabel)
   
@@ -432,4 +429,5 @@ proc drawMenu*() =
   drawFText("Press ESC to exit", 20, 20, 20, MiscTextColor)
 
   drawDebugInfo()
+  currentTitleBar.draw()
   endDrawing()

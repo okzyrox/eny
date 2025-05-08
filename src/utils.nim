@@ -1,6 +1,13 @@
-import std/[strutils, strformat, os, tables]
+import std/[strutils, strformat, os, tables, options]
+
+import discord_rpc
 
 import raylib
+
+const 
+  EnyVersionText* {.strdefine.} = "v0.1.0"
+  EnyCommitText* {.strdefine.} = "000000"
+  VersionText* = EnyVersionText & "-" & EnyCommitText
 
 const
   BackgroundColor* = Color(r: 48, g: 25, b: 52, a: 255)
@@ -21,6 +28,25 @@ const
   OkColor* = Color(r: 255, g: 165, b: 0, a: 255)
   BadColor* = Color(r: 178, g: 34, b: 34, a: 255)
   MissColor* = Color(r: 169, g: 169, b: 169, a: 255)
+
+const
+  BaseScreenWidth* = 1280
+  BaseScreenHeight* = 720
+
+# scaling
+
+proc getScaleFactors*(): (float, float) =
+  let
+    windowWidth = getScreenWidth().float
+    windowHeight = getScreenHeight().float
+  result = (windowWidth / BaseScreenWidth, windowHeight / BaseScreenHeight)
+
+proc scaleX*(x: float, scaleX: float): float = 
+  result = x * scaleX
+proc scaleY*(y: float, scaleY: float): float = 
+  result = y * scaleY
+proc scaleFont*(size: int, scale: float): int = 
+  result = max(12, int(size.float * scale))
 
 # resources
 
@@ -86,6 +112,9 @@ proc drawDualText*(fontName, text1, text2: string, x, y: int32, textSize: int32,
   drawFText(fontName, text1, x, y, textSize, color1)
   drawFText(fontName, text2, (x + textWidth1.x.int32 + spacing), y, textSize, color2)
 
+
+#ext
+
 proc formatTime*(seconds: float): string =
   let totalSeconds = int(seconds)
   let hours = totalSeconds div 3600
@@ -95,3 +124,41 @@ proc formatTime*(seconds: float): string =
     return &"{hours:02}:{minutes:02}:{seconds:02}"
   else:
     return &"{minutes:02}:{seconds:02}"
+
+# rich presence
+
+type ActivityType* = enum # simplify
+  Normal
+  ProgressBar
+
+proc getActivityKind*(activityType: ActivityType): ActivityKind =
+  case activityType:
+    of Normal: result = ActivityKind.Playing
+    of ProgressBar: result = ActivityKind.Listening
+
+const BlankTimestamps = none(ActivityTimestamps)
+proc setActivity*(presence: DiscordRPC, details: string, state: string, activityType: ActivityType, largeImage: string = "eny", largeText: string = "", timestamps: Option[ActivityTimestamps] = BlankTimestamps) =
+  try:
+    if timestamps.isNone:
+      presence.setActivity Activity(
+        details: details,
+        state: state,
+        activityType: some getActivityKind(activityType),
+        assets: some ActivityAssets(
+          largeImage: largeImage,
+          largeText: largeText
+        )
+      )
+    else:
+      presence.setActivity Activity(
+        details: details,
+        state: state,
+        timestamps: timestamps.get(),
+        activityType: some getActivityKind(activityType),
+        assets: some ActivityAssets(
+          largeImage: largeImage,
+          largeText: largeText
+        )
+      )
+  except Exception as e:
+    echo "Error setting Discord activity: ", e.msg

@@ -2,6 +2,7 @@
 ## 
 ## cc: okzyrox
 import ./[chart, config, hit_rating, utils]
+import ui/[titlebar]
 import raylib 
 import discord_rpc
 import std/[os, options, tables, strformat, times]
@@ -47,6 +48,7 @@ var currentChart*: Chart
 var currentConfig*: EnyConfig
 var currentSong*: Music
 var currentResults*: GameResults
+var currentTitleBar*: TitleBar
 
 # discord presence
 
@@ -145,21 +147,16 @@ proc updatePlayingPresence*() =
     start: activityStartTime,
     finish: activityEndTime
   )
-  try:
-    discordPresence.setActivity Activity(
-      details: "eny - Playing",
-      state: accuracyText,
-      timestamps: timestamps,
-      activityType: some ActivityKind.Listening,
-      assets: some ActivityAssets(
-        largeImage: "eny",
-        largeText: fmt"Playing {songName}"
-      )
-    )
-  except Exception as e:
-    if rpcErrorCount < 20:
-      echo "Error setting Discord activity: ", e.msg
-    rpcErrorCount += 1
+  let stateText = fmt"Playing {songName}"
+  setActivity(
+    discordPresence,
+    "eny - Playing",
+    accuracyText,
+    ProgressBar,
+    "eny",
+    stateText,
+    some timestamps
+  )
 
 proc updateResultsPresence*() =
   if currentChart == nil:
@@ -168,19 +165,14 @@ proc updateResultsPresence*() =
   # final score info
   let scoreText = fmt"Score: {currentResults.score} • {currentResults.accuracy:.2f}%"
   let comboText = fmt"Max Combo: {currentResults.maxCombo}x"
-  try:
-    discordPresence.setActivity Activity(
-      details: "eny - Results",
-      state: scoreText,
-      assets: some ActivityAssets(
-        largeImage: "eny",
-        largeText: comboText
-      )
-    )
-  except Exception as e:
-    if rpcErrorCount < 20:
-      echo "Error setting Discord activity: ", e.msg
-    rpcErrorCount += 1
+  setActivity(
+    discordPresence,
+    "eny - Results",
+    scoreText,
+    Normal,
+    "eny",
+    comboText
+  )
 
 proc setState*(state: GameState) =
   currentState = state
@@ -188,51 +180,39 @@ proc setState*(state: GameState) =
     of MainMenu:
       activityStartTime = 0
       activityEndTime = 0
-      try:
-        discordPresence.setActivity Activity(
-          details: "eny - On the menu",
-          state: "Browsing charts",
-          assets: some ActivityAssets(
-            largeImage: "eny",
-            largeText: "Playing eny"
-          )
-        )
-      except Exception as e:
-        if rpcErrorCount < 20:
-          echo "Error setting Discord activity: ", e.msg
-        rpcErrorCount += 1
+      setActivity(
+        discordPresence,
+        "eny - On the menu",
+        "Browsing charts",
+        Normal,
+        "eny",
+        "Playing eny"
+      )
+      currentTitleBar.setTitle("eny - Main Menu")
     of Playing:
-      try:
-        discordPresence.setActivity Activity(
-          details: "eny - Loading song...",
-          state: "Getting ready to play",
-          assets: some ActivityAssets(
-            largeImage: "eny",
-            largeText: "Playing eny"
-          )
-        )
-      except Exception as e:
-        if rpcErrorCount < 20:
-          echo "Error setting Discord activity: ", e.msg
-        rpcErrorCount += 1
+      setActivity(
+        discordPresence,
+        "eny - Loading song...",
+        "Getting ready to play",
+        Normal,
+        "eny",
+        "Playing eny"
+      )
+      currentTitleBar.setTitle("eny")
     of Results:
       activityStartTime = 0
       activityEndTime = 0
       updateResultsPresence()
     of Recording:
-      try:
-        discordPresence.setActivity Activity(
-          details: "eny - Recording a chart",
-          state: "Recording notes...",
-          assets: some ActivityAssets(
-            largeImage: "eny",
-            largeText: "Playing eny"
-          )
-        )
-      except Exception as e:
-        if rpcErrorCount < 20:
-          echo "Error setting Discord activity: ", e.msg
-        rpcErrorCount += 1
+      setActivity(
+        discordPresence,
+        "eny - Recording a chart",
+        "Recording notes...",
+        Normal,
+        "eny",
+        "Playing eny"
+      )
+      currentTitleBar.setTitle("eny - Recording")
 
 proc resetGameState*() =
   gameTime = 0.0
@@ -276,28 +256,42 @@ proc resetResultsScreenFade*() =
   resultsScreenFadeIn = false
 
 let startY = int32(260)
+let baseFont = 18
+let smallFont = 16
 proc drawDebugInfo*() =
-  let toggleTextPosition = if not debugInfoShown: getScreenHeight() - startY + 10 else: getScreenHeight() - startY - 20
-  drawFText("Press `P` to toggle debug info", 10, toggleTextPosition, 18, MiscTextColor)
+  let (sx, sy) = getScaleFactors()
+  let baseX = 10.0
+  let baseY = float(getScreenHeight()) - scaleY(startY.float, sy)
+
+  let fontSize = scaleFont(baseFont, sy).int32
+  let smallFontSize = scaleFont(smallFont, sy).int32
+  let lineHeight = scaleY(22, sy) # adjust as needed
+
+  let scaleXPos = scaleX(baseX, sx).int32
+  let scaleYPos = scaleY(baseY, sy).int32
+
+  let toggleTextYPosition = if not debugInfoShown: 0.0 else: -20.0
+  drawFText("Press `P` to toggle debug info", scaleXPos, (baseY + scaleY(toggleTextYPosition, sy)).int32, fontSize.int32, MiscTextColor)
   if not debugInfoShown:
     return
   else:
-    drawFText("Debug Info:", 10, getScreenHeight() - startY + 10, 18, Yellow)
-    drawFPS(10, getScreenHeight() - startY + 30)
-    drawDualText("songStarted:", $songStarted, 10, getScreenHeight() - startY + 50, 16, 8, White, Yellow)
-    drawDualText("songEnded:", $songEnded, 10, getScreenHeight() - startY + 70, 16, 8, White, Yellow)
-    drawDualText("chartLength:", $chartLength, 10, getScreenHeight() - startY + 90, 16, 8, White, Yellow)
-    drawDualText("songPosition:", $songPosition, 10, getScreenHeight() - startY + 110, 16, 8, White, Yellow)
-    drawDualText("currentState:", $currentState, 10, getScreenHeight() - startY + 130, 16, 8, White, Yellow)
-    drawDualText("isRecording:", $isRecording, 10, getScreenHeight() - startY + 150, 16, 8, White, Yellow)
+    drawFText("Debug Info:", scaleXPos, (baseY + scaleY(10, sy)).int32, fontSize, Yellow)
+    drawFPS(scaleXPos, (baseY + scaleY(30, sy)).int32)
+    drawDualText("songStarted:", $songStarted, scaleXPos, (baseY + scaleY(50, sy)).int32, 16, 8, White, Yellow)
+    drawDualText("songEnded:", $songEnded, scaleXPos, (baseY + scaleY(70, sy)).int32, 16, 8, White, Yellow)
+    drawDualText("chartLength:", $chartLength, scaleXPos, (baseY + scaleY(90, sy)).int32, 16, 8, White, Yellow)
+    drawDualText("songPosition:", $songPosition, scaleXPos, (baseY + scaleY(110, sy)).int32, 16, 8, White, Yellow)
+    drawDualText("currentState:", $currentState, scaleXPos, (baseY + scaleY(130, sy)).int32, 16, 8, White, Yellow)
+    drawDualText("isRecording:", $isRecording, scaleXPos,(baseY + scaleY(150, sy)).int32, 16, 8, White, Yellow)
     if currentChart != nil:
-      drawDualText("currentChart.notes.len:", $currentChart.notes.len, 10, getScreenHeight() - startY + 170, 16, 8, White, AccentColor2)
-      drawDualText("currentChart.songPath:", $currentChart.songPath, 10, getScreenHeight() - startY + 190, 16, 8, White, AccentColor2)
-      drawDualText("currentResults:", $currentResults, 10, getScreenHeight() - startY + 210, 16, 8, White, AccentColor2)
-      drawDualText("playerHitCount (1, 2, 3, 4):", fmt"{playerHitCount[0]}, {playerHitCount[1]}, {playerHitCount[2]}, {playerHitCount[3]}", 10, getScreenHeight() - startY + 230, 16, 8, White, AccentColor2)
+      drawDualText("currentChart.notes.len:", $currentChart.notes.len, scaleXPos, (baseY + scaleY(170, sy)).int32, 16, 8, White, AccentColor2)
+      drawDualText("currentChart.songPath:", $currentChart.songPath, scaleXPos, (baseY + scaleY(190, sy)).int32, 16, 8, White, AccentColor2)
+      drawDualText("currentResults:", $currentResults, scaleXPos, (baseY + scaleY(210, sy)).int32, 16, 8, White, AccentColor2)
+      let playerHitCountText = fmt"{playerHitCount[0]}, {playerHitCount[1]}, {playerHitCount[2]}, {playerHitCount[3]}"
+      drawDualText("playerHitCount (1, 2, 3, 4):", playerHitCountText, scaleXPos, (baseY + scaleY(230, sy)).int32, 16, 8, White, AccentColor2)
     else:
       if currentState == MainMenu:
-        drawDualText("cachedPreviewLength:", $previewMusicCache.len, 10, getScreenHeight() - startY + 170, 16, 8, White, AccentColor)
-        drawDualText("currentPreviewSong:", $currentPreviewSong, 10, getScreenHeight() - startY + 190, 16, 8, White, AccentColor)
-        drawDualText("currentFontName:", $currentFontName, 10, getScreenHeight() - startY + 210, 16, 8, White, AccentColor)
+        drawDualText("cachedPreviewLength:", $previewMusicCache.len, scaleXPos, (baseY + scaleY(170, sy)).int32, 16, 8, White, AccentColor)
+        drawDualText("currentPreviewSong:", $currentPreviewSong, scaleXPos, (baseY + scaleY(190, sy)).int32, 16, 8, White, AccentColor)
+        drawDualText("currentFontName:", $currentFontName, scaleXPos, (baseY + scaleY(210, sy)).int32, 16, 8, White, AccentColor)
 

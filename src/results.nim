@@ -3,6 +3,7 @@
 ## cc: okzyrox
 import raylib
 import ./[states, utils]
+import ui/[titlebar]
 
 import std/[strformat]
 
@@ -24,7 +25,8 @@ proc drawResults*() =
 
   drawDualText("Max Combo:", $currentResults.maxCombo, 200, 250, 30, 10, TextColor, AccentColor2)
 
-  drawDualText("Accuracy:", fmt"{currentResults.accuracy:.2f}%", 200, 300, 30, 10, TextColor, Gold)
+  let accuracyText = fmt"{currentResults.accuracy:.2f}%"
+  drawDualText("Accuracy:", accuracyText, 200, 300, 30, 10, TextColor, Gold)
 
   drawDualText("Perfect:", $currentResults.perfect, 200, 350, 30, 10, TextColor, PerfectColor)
   drawDualText("Great:", $currentResults.great, 200, 400, 30, 10, TextColor, GreatColor)
@@ -52,5 +54,6 @@ proc drawResults*() =
 
   drawDebugInfo()
 
+  currentTitleBar.draw()
   
   endDrawing()

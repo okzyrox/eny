@@ -18,9 +18,15 @@ import ./[
   utils
 ]
 
+import ui/[
+  titlebar
+]
+
 const
   # base song scroll speed (for 1x)
   ScrollSpeed = 450.0  # Pix/s, mult 0.5x-2.5x in chart data
+  DefaultScreenWidth = int32(1280)
+  DefaultScreenHeight = int32(720)
 
 var
   KeyboardBinds: Table[KeyboardKey, int] = {
@@ -62,9 +68,6 @@ var activeNoteDrawTable: Table[int, ref Note]
 var inactiveNoteDrawTable: Table[int, ref Note]
 var recordedNotes: seq[RecordedNote] = @[]
 
-var screenHeight: int32
-var screenWidth: int32
-
 proc allNotesCompleted(chart: Chart): bool =
   if chart.notes.len == 0:
     return true
@@ -87,10 +90,13 @@ proc updateKeyStates() =
 
 proc drawRecordingUI(recordedNotes: seq[RecordedNote]) = 
   let recordingText = "RECORDING"
+  let recordingSaveText = "Press G to save"
+  let recordingNoteCountText = fmt"Notes: {recordedNotes.len}"
   let textWidth = measureText(recordingText, 20)
-  drawFText(recordingText, int32(screenWidth - textWidth - 10), 10, 20, AccentColor)
-  drawFText("Press G to save", int32(screenWidth - measureText("Press G to save", 16) - 10), 35, 16, AccentColor)
-  drawFText(fmt"Total Notes: {recordedNotes.len}", 10, 70, 20, TextColor)
+  let saveTextWidth = measureText(recordingSaveText, 16)
+  drawFText(recordingText, int32(getScreenWidth() - textWidth - 10), 10, 20, AccentColor)
+  drawFText(recordingSaveText, int32(getScreenWidth() - saveTextWidth - 10), 35, 16, AccentColor)
+  drawFText(recordingNoteCountText, 10, 70, 20, TextColor)
 
 proc drawPlayerStats(titleX: int32) =
   let comboText = fmt"Combo: {currentResults.currentCombo}"
@@ -103,8 +109,11 @@ proc drawPlayerStats(titleX: int32) =
     let timeText = fmt"Time: " & formatTime(songPosition)
     let endTimeText = fmt"(End: " & formatTime(endTime) & ")"
     drawDualText(timeText, endTimeText, int32(titleX), 160, 20, 16, TextColor, MiscTextColor)
-  drawFText(fmt"Score: {currentResults.score}", titleX, 190, 20, AccentColor2)
-  drawFText(fmt"Accuracy: {currentResults.accuracy:.2f}%", titleX, 220, 20, AccentColor2)
+  
+  let scoreText = fmt"Score: {currentResults.score}"
+  let accuracyText = fmt"Accuracy: {currentResults.accuracy:.2f}%"
+  drawFText(scoreText, titleX, 190, 20, AccentColor2)
+  drawFText(accuracyText, titleX, 220, 20, AccentColor2)
   
   let statY = int32(240)
   let perfectText = "PERFECT: " & $currentResults.perfect
@@ -132,7 +141,7 @@ proc drawReceptors(startX: int, receptorY: int, totalNotesWidth: int, noteSpacin
     x: float(startX32 - 20),
     y: float(0),
     width: float(totalNotesWidth32 + 40),
-    height: float(screenHeight)
+    height: float(getScreenHeight())
   )
   drawRectangleRounded(
     bgRect,
@@ -218,7 +227,7 @@ proc drawHitRatings(startX: int, noteSpacing: int, receptorY: int) =
 proc drawNotes(startX: int, noteSpacing: int, chartScrollSpeed: float, receptorY: int) =
   for note in currentChart.notes:
     if not note.hit or (note.isHoldNote and (not note.released)):
-      if note.position > -100 and (note.isHoldNote or note.position < float(screenHeight + 100)): # only draw notes that are on screen
+      if note.position > -100 and (note.isHoldNote or note.position < float(getScreenHeight() + 100)): # only draw notes that are on screen
         # special case to handle hold note trails (so they dont end abruptly due to cutoff)
         let noteX = int32(startX + (note.columnIndex * (SpriteUpscale + noteSpacing)))
         let halfScale = int32(SpriteUpscale / 2)
@@ -262,7 +271,7 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
   
   let songTitle = currentChart.songTitle
   let titleWidth = measureText(songTitle, 24)
-  let titleX = int32((screenWidth - titleWidth) div 2) + 24
+  let titleX = int32((getScreenWidth() - titleWidth) div 2) + 24
   let noteAreaEndX = startX + totalNotesWidth
   
   # Record UI
@@ -295,7 +304,7 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
     drawFText(songTitle, titleX, 20, 24, AccentColor2)
     let countdownText = $(-int(songPosition) + 1)
     let textWidth = measureText(countdownText, 40)
-    let countdownX = int32((screenWidth - textWidth) div 2)
+    let countdownX = int32((getScreenWidth() - textWidth) div 2)
     drawFText(countdownText, countdownX, 100, 40, AccentColor)
   
   # Fallin notes
@@ -304,7 +313,7 @@ proc drawGameUI(startX: int, receptorY: int32, totalNotesWidth: int, noteSpacing
   
   # end screen fade
   if songFading:
-    drawRectangle(0, 0, screenWidth, screenHeight, fade(Black, float32(screenFadeAlpha)))
+    drawRectangle(0, 0, getScreenWidth(), getScreenHeight(), fade(Black, float32(screenFadeAlpha)))
 
 proc updateRecording(songPosition: float) =
   for key, index in KeyboardBinds:
@@ -364,23 +373,23 @@ proc initRichPresence() =
   try:
     discard discordPresence.connect
     discordPresence.setActivity Activity(
-        details: "eny - On the menu",
-        state: "Browsing charts",
-        assets: some ActivityAssets(
-          largeImage: "eny",
-          largeText: "Playing eny"
-        )
+      details: "eny - On the menu",
+      state: "Browsing charts",
+      activityType: some ActivityKind.Playing,
+      assets: some ActivityAssets(
+        largeImage: "eny",
+        largeText: "Playing eny"
       )
+    )
   except Exception as e:
     echo "Failed to connect to Discord RPC: ", e.msg
 
 proc main() =
   # load raylib
-
-  initWindow(1280, 720, "eny")
+  setConfigFlags(flags(WindowResizable, VsyncHint, WindowUndecorated))
+  initWindow(BaseScreenWidth, BaseScreenHeight, "eny")
   setTargetFPS(144)
   initAudioDevice()
-  setConfigFlags(flags(VsyncHint))
   defer: closeAudioDevice()
   randomize()
 
@@ -399,6 +408,10 @@ proc main() =
   let icon = loadImage(assetFolderPath & "/eny/eny.png")
   setWindowIcon(icon)
 
+  # titlebar
+
+  currentTitleBar = newTitleBar("eny - Main Menu")
+
   # load font
 
   loadFontToCache("exo2", "exo2-medium.ttf") # Regular
@@ -414,13 +427,11 @@ proc main() =
   inactiveNoteDrawTable = loadedNotes["Inactive"]
   
   # draw configs (used for input too)
-  screenHeight = getScreenHeight()
-  screenWidth = getScreenWidth()
 
   let noteSpacing = 24
   let totalNotesWidth = (inactiveNoteDrawTable.len * SpriteUpscale) + ((inactiveNoteDrawTable.len - 1) * noteSpacing)
-  let startX = (screenWidth - totalNotesWidth) div 2
-  let receptorY = screenHeight - SpriteUpscale - 80
+  let startX = (getScreenWidth() - totalNotesWidth) div 2
+  let receptorY = getScreenHeight() - SpriteUpscale - 80
   let noteTextY = receptorY + 70
   let receptorLineY = receptorY + 30
   let receptorLineHeight = 4
@@ -445,23 +456,28 @@ proc main() =
   resetResultsScreenFade()
 
   while not windowShouldClose():
+    # keybinds
     updateKeyStates()
     if isKeyPressed(KeyboardKey.P):
       debugInfoShown = not debugInfoShown
-    if isKeyPressed(KeyboardKey.Semicolon):
-      setCurrentFont(loadedFonts[rand(high(loadedFonts))])
-    if isKeyPressed(KeyboardKey.Minus):
+    elif isKeyPressed(KeyboardKey.Minus):
       var scrollSpeed = currentConfig.scrollSpeed - 0.1
       if scrollSpeed < 0.1:
         scrollSpeed = 0.1
       currentConfig.scrollSpeed = scrollSpeed
       chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
-    if isKeyPressed(KeyboardKey.Equal):
+    elif isKeyPressed(KeyboardKey.Equal):
       var scrollSpeed = currentConfig.scrollSpeed + 0.1
       if scrollSpeed > 4.0:
         scrollSpeed = 4.0
       currentConfig.scrollSpeed = scrollSpeed
       chartScrollSpeed = ScrollSpeed * currentConfig.scrollSpeed
+    # title bar
+    currentTitleBar.update() 
+    # if isKeyPressed(KeyboardKey.Semicolon):
+    #   setCurrentFont(loadedFonts[rand(high(loadedFonts))])
+    
+    # states
     case currentState:
       of GameState.Playing:
         let deltaTime = getFrameTime()
@@ -745,6 +761,7 @@ proc main() =
           chartScrollSpeed
         )
         drawDebugInfo()
+        currentTitleBar.draw()
         endDrawing()
       of GameState.MainMenu:
         updateMenu()
