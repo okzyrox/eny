@@ -1,6 +1,7 @@
 ## eny
 ## 
 ## cc: okzyrox
+## Quaver to eny converter
 import std/[os, strutils, math, json, tables, strformat, options, algorithm]
 
 # i would use NimYaml however it doesn't support optional fields for yaml objects, 
@@ -139,7 +140,7 @@ proc convertQuaverToEny(filePath: string) =
   outputJson["title"] = %("(Quaver): " & title)
   outputJson["song"] = %songName
   outputJson["extra"] = %*{}
-  outputJson["extra"]["fromQuaver"] = %true
+  outputJson["extra"]["game"] = %"QUAVER"
   if metadata.hasKey("Artist"):
     outputJson["extra"]["artist"] = %metadata["Artist"]
   if metadata.hasKey("Creator"):

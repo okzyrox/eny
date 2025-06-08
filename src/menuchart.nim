@@ -13,6 +13,7 @@ type
     path*: string
     artist*: string
     creator*: string
+    sourceGame*: string
     difficultyName*: string
     length*: float
     lengthFormatted*: string
@@ -32,6 +33,10 @@ proc loadChartInfo*(filePath: string): ChartInfo =
       result.creator = extra["creator"].getStr("")
     if extra.hasKey("difficulty"):
       result.difficultyName = extra["difficulty"].getStr("")
+    if extra.hasKey("game"):
+      result.sourceGame = extra["game"].getStr("")
+    else:
+      result.sourceGame = "UNKNOWN"
   
   var maxTime = 0.0
   for note in jsonContent["notes"]:

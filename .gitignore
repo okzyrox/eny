@@ -12,4 +12,7 @@
 *.dll
 eny.json
 *.qua
+*.osu
 tools/QuaToEnyConverter/**
+tools/OsuToEnyConverter/**
+dev/**
