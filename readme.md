@@ -10,6 +10,8 @@ rhythm "game" in Nim and raylib
 
 press the notes when they reach your arrows
 
+showcase: [Video](https://www.youtube.com/watch?v=kJFx3VM5QF4)
+
 i've included some premade (although half-assed) charts and songs that i made by pressing keys to the music with my eyes closed.
 
 i made this because i was inspired by a fairly small youtuber who made a rhythm game based on Bocchi the Rock! (which was very cool and interesting), and i thought "i could totally do that... probably"
